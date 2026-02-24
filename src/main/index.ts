@@ -1,8 +1,9 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './ipc-handlers'
+import { TrayManager } from './tray'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -54,6 +55,21 @@ app.whenReady().then(() => {
 
   const mainWindow = createWindow()
   registerIpcHandlers(mainWindow)
+
+  const trayManager = new TrayManager(
+    mainWindow,
+    () => {
+      mainWindow.webContents.send('tray:startRecording')
+    },
+    () => {
+      mainWindow.webContents.send('tray:stopRecording')
+    }
+  )
+  trayManager.create()
+
+  ipcMain.on('tray:updateRecordingState', (_event, isRecording: boolean) => {
+    trayManager.setRecording(isRecording)
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
