@@ -1,0 +1,787 @@
+/* ============================================================
+   MINT - Meeting Intelligence Notes & Transcription
+   Global Stylesheet — Dark Theme
+   ============================================================ */
+
+/* ----- CSS Custom Properties ----- */
+:root {
+  --color-bg-primary: #1a1a1e;
+  --color-bg-secondary: #232328;
+  --color-bg-elevated: #2a2a30;
+  --color-bg-hover: #33333a;
+  --color-bg-input: #1e1e24;
+
+  --color-text-primary: rgba(255, 255, 245, 0.90);
+  --color-text-secondary: rgba(235, 235, 245, 0.60);
+  --color-text-tertiary: rgba(235, 235, 245, 0.38);
+  --color-text-inverse: #1a1a1e;
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.15);
+
+  --color-accent: #5b8af5;
+  --color-accent-hover: #7ba3ff;
+
+  --color-status-recording: #ef4444;
+  --color-status-processing: #f59e0b;
+  --color-status-completed: #22c55e;
+  --color-status-failed: #ef4444;
+
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
+    Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono',
+    'Courier New', monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --sidebar-width: 180px;
+
+  --transition-fast: 120ms ease;
+  --transition-normal: 200ms ease;
+}
+
+/* ----- Reset & Base ----- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+}
+
+#root {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: 28px; }
+h2 { font-size: 20px; }
+h3 { font-size: 15px; }
+
+p {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+ul {
+  list-style: none;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+/* ----- Scrollbar ----- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.20);
+}
+
+/* ----- Shared Form Elements ----- */
+button {
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  background: var(--color-accent);
+  color: #fff;
+  transition: background var(--transition-fast), opacity var(--transition-fast);
+}
+
+button:hover {
+  background: var(--color-accent-hover);
+}
+
+button:active {
+  opacity: 0.85;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='search'] {
+  font-family: var(--font-family);
+  font-size: 13px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+input[type='text']:focus,
+input[type='email']:focus,
+input[type='password']:focus,
+input[type='search']:focus {
+  border-color: var(--color-accent);
+}
+
+input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+select {
+  font-family: var(--font-family);
+  font-size: 13px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+select:focus {
+  border-color: var(--color-accent);
+}
+
+label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* ============================================================
+   AUTH SCREEN
+   ============================================================ */
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+  padding: 40px;
+}
+
+.auth-container h1 {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, var(--color-accent), #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-container > p {
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 32px;
+}
+
+.auth-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.auth-container form button[type='submit'] {
+  margin-top: 4px;
+  padding: 10px 16px;
+  font-weight: 600;
+}
+
+.auth-container > button {
+  margin-top: 16px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.auth-container > button:hover {
+  color: var(--color-text-primary);
+  background: transparent;
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ============================================================
+   APP LAYOUT
+   ============================================================ */
+.app-layout {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+/* ----- Sidebar ----- */
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  background: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  padding: 48px 12px 12px;
+  gap: 4px;
+  -webkit-app-region: drag;
+}
+
+.sidebar button {
+  -webkit-app-region: no-drag;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar button:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.sidebar button.active {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+/* ----- Main Content ----- */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 32px;
+}
+
+/* ============================================================
+   MEETING LIST
+   ============================================================ */
+.meeting-list {
+  max-width: 720px;
+}
+
+.meeting-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.meeting-list-header h2 {
+  margin: 0;
+}
+
+.meeting-list-header button {
+  font-weight: 600;
+}
+
+.meeting-list > p {
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: 48px 0;
+}
+
+/* ============================================================
+   MEETING CARD
+   ============================================================ */
+.meeting-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.meeting-card:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-strong);
+}
+
+.meeting-card h3 {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meeting-card p {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* ----- Status Badges ----- */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.status-recording {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-status-recording);
+}
+
+.status-processing {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-status-processing);
+}
+
+.status-completed {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-status-completed);
+}
+
+.status-failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-status-failed);
+}
+
+/* ============================================================
+   LIVE RECORDING
+   ============================================================ */
+.live-recording {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px);
+  max-width: 720px;
+}
+
+.recording-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.meeting-title-input {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  min-width: 180px;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.meeting-title-input:hover {
+  background: var(--color-bg-input);
+}
+
+.meeting-title-input:focus {
+  border-color: var(--color-accent);
+  background: var(--color-bg-input);
+  outline: none;
+}
+
+.recording-timer {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: 0.05em;
+}
+
+.recording-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-status-recording);
+  display: inline-block;
+  animation: pulse-recording 1.4s ease-in-out infinite;
+  box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes pulse-recording {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 12px 4px rgba(239, 68, 68, 0.7);
+  }
+}
+
+.stop-button {
+  background: var(--color-danger);
+  color: #fff;
+  font-weight: 600;
+  padding: 8px 20px;
+}
+
+.stop-button:hover {
+  background: var(--color-danger-hover);
+}
+
+/* ----- Transcript Feed ----- */
+.transcript-feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transcript-entry {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  transition: opacity var(--transition-fast);
+}
+
+.transcript-entry.interim {
+  opacity: 0.50;
+  border-style: dashed;
+}
+
+.speaker-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+  white-space: nowrap;
+  min-width: 70px;
+}
+
+.transcript-text {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   MEETING DETAIL
+   ============================================================ */
+.meeting-detail {
+  max-width: 720px;
+}
+
+.back-button {
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  padding: 6px 0;
+  margin-bottom: 16px;
+}
+
+.back-button::before {
+  content: '\2190\00a0';
+}
+
+.back-button:hover {
+  color: var(--color-text-primary);
+  background: transparent;
+}
+
+.meeting-detail > h2 {
+  margin-bottom: 4px;
+}
+
+.meeting-date {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 10px;
+}
+
+.meeting-detail > .status-badge {
+  margin-bottom: 24px;
+}
+
+/* ----- Tabs ----- */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 10px 18px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  font-weight: 500;
+  position: relative;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.tab:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.tab.tab-active {
+  color: var(--color-accent);
+  background: transparent;
+}
+
+.tab.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 2px 2px 0 0;
+}
+
+/* ----- Tab Content ----- */
+.tab-content {
+  min-height: 200px;
+}
+
+/* ----- Summary ----- */
+.summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.summary-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--color-text-primary);
+}
+
+.summary-section p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+.summary-section ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 16px;
+  list-style: disc;
+}
+
+.summary-section ul li {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* ----- Action Items ----- */
+.action-items {
+  list-style: none !important;
+  padding-left: 0 !important;
+}
+
+.action-item label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.action-item input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.action-assignee {
+  color: var(--color-accent);
+  font-size: 12px;
+}
+
+.action-due-date {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+/* ----- Transcript Tab ----- */
+.transcript-search {
+  margin-bottom: 16px;
+}
+
+.transcript-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transcript-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.transcript-row:hover {
+  background: var(--color-bg-hover);
+}
+
+.transcript-timestamp {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+.transcript-speaker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.transcript-content {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+.settings {
+  max-width: 480px;
+}
+
+.settings h2 {
+  margin-bottom: 28px;
+}
+
+.settings section {
+  margin-bottom: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings section:last-child {
+  border-bottom: none;
+}
+
+.settings section h3 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+  margin-bottom: 14px;
+}
+
+.settings section p {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.settings section button {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.settings section button:hover {
+  background: var(--color-bg-hover);
+}
