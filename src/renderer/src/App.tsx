@@ -4,8 +4,9 @@ import { Auth } from './components/Auth'
 import { MeetingList } from './components/MeetingList'
 import { MeetingDetail } from './components/MeetingDetail'
 import { LiveRecording } from './components/LiveRecording'
+import { Settings } from './components/Settings'
 
-type View = 'meetings' | 'recording' | 'detail'
+type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
 function AppContent(): React.JSX.Element {
   const { session } = useAuth()
@@ -14,42 +15,68 @@ function AppContent(): React.JSX.Element {
 
   if (!session) return <Auth />
 
-  if (view === 'recording') {
+  const renderContent = (): React.JSX.Element => {
+    if (view === 'recording') {
+      return (
+        <LiveRecording
+          onStop={async () => {
+            await window.mintAPI.stopRecording()
+            setView('meetings')
+          }}
+        />
+      )
+    }
+
+    if (view === 'detail' && selectedMeetingId) {
+      return (
+        <MeetingDetail
+          meetingId={selectedMeetingId}
+          onBack={() => setView('meetings')}
+        />
+      )
+    }
+
+    if (view === 'settings') {
+      return <Settings />
+    }
+
     return (
-      <LiveRecording
-        onStop={async () => {
-          await window.mintAPI.stopRecording()
-          setView('meetings')
+      <MeetingList
+        onSelectMeeting={(meetingId) => {
+          setSelectedMeetingId(meetingId)
+          setView('detail')
+        }}
+        onStartRecording={async () => {
+          const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
+          await window.mintAPI.startRecording({
+            userId: session.user.id,
+            title: defaultTitle,
+            accessToken: session.access_token
+          })
+          setView('recording')
         }}
       />
     )
   }
 
-  if (view === 'detail' && selectedMeetingId) {
-    return (
-      <MeetingDetail
-        meetingId={selectedMeetingId}
-        onBack={() => setView('meetings')}
-      />
-    )
-  }
-
   return (
-    <MeetingList
-      onSelectMeeting={(meetingId) => {
-        setSelectedMeetingId(meetingId)
-        setView('detail')
-      }}
-      onStartRecording={async () => {
-        const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
-        await window.mintAPI.startRecording({
-          userId: session.user.id,
-          title: defaultTitle,
-          accessToken: session.access_token
-        })
-        setView('recording')
-      }}
-    />
+    <div className="app-layout">
+      <nav className="sidebar">
+        <button
+          className={view === 'meetings' || view === 'detail' || view === 'recording' ? 'active' : ''}
+          onClick={() => setView('meetings')}
+        >
+          Meetings
+        </button>
+        <button
+          className={view === 'settings' ? 'active' : ''}
+          onClick={() => setView('settings')}
+        >
+          Settings
+        </button>
+      </nav>
+      <main className="main-content">{renderContent()}</main>
+    </div>
   )
 }
 
