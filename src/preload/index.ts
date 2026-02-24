@@ -121,16 +121,30 @@ function downsampleBuffer(
   return outputBuffer
 }
 
-async function startAudioCapture(): Promise<void> {
+async function startAudioCapture(sourceId: string): Promise<void> {
   try {
+    // On macOS, system audio capture requires a screen source with audio enabled.
+    // We request both video+audio, then discard the video track.
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         mandatory: {
-          chromeMediaSource: 'desktop'
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: sourceId
         }
       } as unknown as MediaTrackConstraints,
-      video: false
+      video: {
+        mandatory: {
+          chromeMediaSource: 'desktop',
+          chromeMediaSourceId: sourceId,
+          maxWidth: 1,
+          maxHeight: 1,
+          maxFrameRate: 1
+        }
+      } as unknown as MediaTrackConstraints
     })
+
+    // Discard the video track — we only need audio
+    stream.getVideoTracks().forEach((track) => track.stop())
 
     activeAudioStream = stream
     activeAudioContext = new AudioContext()
@@ -184,8 +198,8 @@ function stopAudioCapture(): void {
   }
 }
 
-ipcRenderer.on('audio:startCapture', () => {
-  startAudioCapture()
+ipcRenderer.on('audio:startCapture', (_event, sourceId: string) => {
+  startAudioCapture(sourceId)
 })
 
 ipcRenderer.on('audio:stopCapture', () => {

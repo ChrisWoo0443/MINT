@@ -48,7 +48,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         })
 
         mainWindow.webContents.send('recording:status', 'recording')
-        audioCaptureService.startCapture(mainWindow, (chunk: Buffer) => {
+        await audioCaptureService.startCapture(mainWindow, (chunk: Buffer) => {
           deepgramService.sendAudio(chunk)
         })
       } catch (startError) {

@@ -1,11 +1,15 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, desktopCapturer } from 'electron'
 
 export class AudioCaptureService {
   private audioChunkHandler: ((chunk: Buffer) => void) | null = null
 
-  startCapture(mainWindow: BrowserWindow, onChunk: (chunk: Buffer) => void): void {
+  async startCapture(mainWindow: BrowserWindow, onChunk: (chunk: Buffer) => void): Promise<void> {
     this.audioChunkHandler = onChunk
-    mainWindow.webContents.send('audio:startCapture')
+
+    const sources = await desktopCapturer.getSources({ types: ['screen'] })
+    const sourceId = sources.length > 0 ? sources[0].id : ''
+
+    mainWindow.webContents.send('audio:startCapture', sourceId)
   }
 
   stopCapture(mainWindow: BrowserWindow): void {
