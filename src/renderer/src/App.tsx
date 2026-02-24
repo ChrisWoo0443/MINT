@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Auth } from './components/Auth'
 import { MeetingList } from './components/MeetingList'
+import { LiveRecording } from './components/LiveRecording'
 
 type View = 'meetings' | 'recording' | 'detail'
 
@@ -14,10 +15,12 @@ function AppContent(): React.JSX.Element {
 
   if (view === 'recording') {
     return (
-      <div>
-        <button onClick={() => setView('meetings')}>Back to Meetings</button>
-        <p>Recording view placeholder</p>
-      </div>
+      <LiveRecording
+        onStop={async () => {
+          await window.mintAPI.stopRecording()
+          setView('meetings')
+        }}
+      />
     )
   }
 
@@ -36,7 +39,15 @@ function AppContent(): React.JSX.Element {
         setSelectedMeetingId(meetingId)
         setView('detail')
       }}
-      onStartRecording={() => setView('recording')}
+      onStartRecording={async () => {
+        const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
+        await window.mintAPI.startRecording({
+          userId: session.user.id,
+          title: defaultTitle,
+          accessToken: session.access_token
+        })
+        setView('recording')
+      }}
     />
   )
 }
