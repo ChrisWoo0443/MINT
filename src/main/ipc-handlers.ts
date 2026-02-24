@@ -20,36 +20,43 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       _event,
       args: { userId: string; title: string; accessToken: string }
     ) => {
-      const { userId, title, accessToken } = args
+      try {
+        const { userId, title, accessToken } = args
 
-      supabaseService.setAccessToken(accessToken)
+        supabaseService.setAccessToken(accessToken)
 
-      currentMeetingId = await supabaseService.createMeeting(userId, title)
+        currentMeetingId = await supabaseService.createMeeting(userId, title)
 
-      const deepgramApiKey = process.env.DEEPGRAM_API_KEY || ''
+        const deepgramApiKey = process.env.DEEPGRAM_API_KEY || ''
 
-      await deepgramService.startStreaming(deepgramApiKey, async (result) => {
-        mainWindow.webContents.send('transcript:chunk', result)
+        await deepgramService.startStreaming(deepgramApiKey, async (result) => {
+          mainWindow.webContents.send('transcript:chunk', result)
 
-        if (result.isFinal && currentMeetingId) {
-          try {
-            await supabaseService.insertTranscriptChunk(
-              currentMeetingId,
-              result.speaker,
-              result.content,
-              result.timestampStart,
-              result.timestampEnd
-            )
-          } catch (insertError) {
-            console.error('Failed to insert transcript chunk:', insertError)
+          if (result.isFinal && currentMeetingId) {
+            try {
+              await supabaseService.insertTranscriptChunk(
+                currentMeetingId,
+                result.speaker,
+                result.content,
+                result.timestampStart,
+                result.timestampEnd
+              )
+            } catch (insertError) {
+              console.error('Failed to insert transcript chunk:', insertError)
+            }
           }
-        }
-      })
+        })
 
-      mainWindow.webContents.send('recording:status', 'recording')
-      audioCaptureService.startCapture(mainWindow, (chunk: Buffer) => {
-        deepgramService.sendAudio(chunk)
-      })
+        mainWindow.webContents.send('recording:status', 'recording')
+        audioCaptureService.startCapture(mainWindow, (chunk: Buffer) => {
+          deepgramService.sendAudio(chunk)
+        })
+      } catch (startError) {
+        console.error('Failed to start recording:', startError)
+        currentMeetingId = null
+        mainWindow.webContents.send('recording:status', 'error')
+        throw startError
+      }
     }
   )
 

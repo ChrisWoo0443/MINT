@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: mint-scaffold
+appId: com.mint.app
+productName: MINT
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: mint-scaffold
+  executableName: mint
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

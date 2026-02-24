@@ -37,7 +37,8 @@ ${transcript}`
 
     const result = await model.generateContent(prompt)
     const responseText = result.response.text()
-    const parsed = JSON.parse(responseText) as MeetingNotes
+    const cleaned = responseText.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '')
+    const parsed = JSON.parse(cleaned) as MeetingNotes
 
     return {
       notes: parsed,

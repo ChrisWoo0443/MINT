@@ -12,6 +12,7 @@ function AppContent(): React.JSX.Element {
   const { session } = useAuth()
   const [view, setView] = useState<View>('meetings')
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
+  const [meetingListKey, setMeetingListKey] = useState(0)
 
   if (!session) return <Auth />
 
@@ -19,8 +20,9 @@ function AppContent(): React.JSX.Element {
     if (view === 'recording') {
       return (
         <LiveRecording
-          onStop={async () => {
-            await window.mintAPI.stopRecording()
+          onStop={() => {
+            window.mintAPI.stopRecording()
+            setMeetingListKey((k) => k + 1)
             setView('meetings')
           }}
         />
@@ -42,18 +44,23 @@ function AppContent(): React.JSX.Element {
 
     return (
       <MeetingList
+        key={meetingListKey}
         onSelectMeeting={(meetingId) => {
           setSelectedMeetingId(meetingId)
           setView('detail')
         }}
         onStartRecording={async () => {
-          const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
-          await window.mintAPI.startRecording({
-            userId: session.user.id,
-            title: defaultTitle,
-            accessToken: session.access_token
-          })
-          setView('recording')
+          try {
+            const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
+            await window.mintAPI.startRecording({
+              userId: session.user.id,
+              title: defaultTitle,
+              accessToken: session.access_token
+            })
+            setView('recording')
+          } catch (error) {
+            console.error('Failed to start recording:', error)
+          }
         }}
       />
     )

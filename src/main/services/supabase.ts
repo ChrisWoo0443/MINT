@@ -2,17 +2,19 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 export class SupabaseService {
   private client: SupabaseClient
+  private url: string
+  private anonKey: string
 
   constructor(url: string, anonKey: string) {
+    this.url = url
+    this.anonKey = anonKey
     this.client = createClient(url, anonKey)
   }
 
   setAccessToken(token: string): void {
-    this.client = createClient(
-      process.env.VITE_SUPABASE_URL || '',
-      process.env.VITE_SUPABASE_ANON_KEY || '',
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    )
+    this.client = createClient(this.url, this.anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    })
   }
 
   async createMeeting(userId: string, title: string): Promise<string> {

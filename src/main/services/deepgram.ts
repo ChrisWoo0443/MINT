@@ -51,6 +51,11 @@ export class DeepgramService {
     this.connection.on(LiveTranscriptionEvents.Error, (error: any) => {
       console.error('Deepgram error:', error)
     })
+
+    return new Promise<void>((resolve, reject) => {
+      this.connection.on(LiveTranscriptionEvents.Open, () => resolve())
+      this.connection.on(LiveTranscriptionEvents.Error, (error: any) => reject(error))
+    })
   }
 
   sendAudio(audioBuffer: Buffer): void {
