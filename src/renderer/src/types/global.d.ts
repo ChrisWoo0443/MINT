@@ -1,5 +1,3 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
-
 interface TranscriptChunk {
   speaker: string | null
   content: string
@@ -19,7 +17,8 @@ interface MintAPI {
 
 declare global {
   interface Window {
-    electron: ElectronAPI
     mintAPI: MintAPI
   }
 }
+
+export {}
