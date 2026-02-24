@@ -9,8 +9,14 @@ interface TranscriptChunk {
   isFinal: boolean
 }
 
+interface StartRecordingArgs {
+  userId: string
+  title: string
+  accessToken: string
+}
+
 interface MintAPI {
-  startRecording: () => Promise<void>
+  startRecording: (args: StartRecordingArgs) => Promise<void>
   stopRecording: () => Promise<void>
   onTranscriptChunk: (callback: (chunk: TranscriptChunk) => void) => () => void
   onRecordingStatus: (callback: (status: string) => void) => () => void
@@ -19,7 +25,7 @@ interface MintAPI {
 }
 
 const mintAPI: MintAPI = {
-  startRecording: () => ipcRenderer.invoke('recording:start'),
+  startRecording: (args: StartRecordingArgs) => ipcRenderer.invoke('recording:start', args),
   stopRecording: () => ipcRenderer.invoke('recording:stop'),
 
   onTranscriptChunk: (callback: (chunk: TranscriptChunk) => void) => {
