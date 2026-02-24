@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { Auth } from './components/Auth'
 import { MeetingList } from './components/MeetingList'
+import { MeetingDetail } from './components/MeetingDetail'
 import { LiveRecording } from './components/LiveRecording'
 
 type View = 'meetings' | 'recording' | 'detail'
@@ -26,10 +27,10 @@ function AppContent(): React.JSX.Element {
 
   if (view === 'detail' && selectedMeetingId) {
     return (
-      <div>
-        <button onClick={() => setView('meetings')}>Back to Meetings</button>
-        <p>Meeting detail placeholder for {selectedMeetingId}</p>
-      </div>
+      <MeetingDetail
+        meetingId={selectedMeetingId}
+        onBack={() => setView('meetings')}
+      />
     )
   }
 
