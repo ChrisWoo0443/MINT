@@ -19,7 +19,14 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     'recording:start',
     async (
       _event,
-      args: { userId: string; title: string; accessToken: string; userName: string }
+      args: {
+        userId: string
+        title: string
+        accessToken: string
+        userName: string
+        micDeviceId?: string
+        blackholeDeviceId?: string
+      }
     ) => {
       try {
         const { userId, title, accessToken, userName } = args
@@ -71,7 +78,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         }
 
         mainWindow.webContents.send('recording:status', 'recording')
-        await audioCaptureService.startCapture(mainWindow)
+        const micDeviceId = args.micDeviceId || 'default'
+        const blackholeDeviceId = args.blackholeDeviceId || ''
+        audioCaptureService.startCapture(mainWindow, { micDeviceId, blackholeDeviceId })
       } catch (startError) {
         console.error('Failed to start recording:', startError)
         currentMeetingId = null

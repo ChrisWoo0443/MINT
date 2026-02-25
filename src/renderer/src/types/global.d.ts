@@ -11,6 +11,8 @@ interface StartRecordingArgs {
   title: string
   accessToken: string
   userName: string
+  micDeviceId?: string
+  blackholeDeviceId?: string
 }
 
 interface MintAPI {

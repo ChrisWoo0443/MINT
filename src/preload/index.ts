@@ -14,6 +14,8 @@ interface StartRecordingArgs {
   title: string
   accessToken: string
   userName: string
+  micDeviceId?: string
+  blackholeDeviceId?: string
 }
 
 interface MintAPI {
@@ -146,45 +148,35 @@ function createAudioPipeline(
   return processor
 }
 
-async function startAudioCapture(sourceId: string): Promise<void> {
+async function startAudioCapture(deviceConfig: { micDeviceId: string; blackholeDeviceId: string }): Promise<void> {
   try {
     activeAudioContext = new AudioContext()
 
-    // Always capture microphone
-    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    // Capture microphone
+    const micConstraints: MediaStreamConstraints = {
+      audio: deviceConfig.micDeviceId && deviceConfig.micDeviceId !== 'default'
+        ? { deviceId: { exact: deviceConfig.micDeviceId } }
+        : true
+    }
+    const micStream = await navigator.mediaDevices.getUserMedia(micConstraints)
     activeStreams.push(micStream)
     const micSource = activeAudioContext.createMediaStreamSource(micStream)
     activeProcessors.push(createAudioPipeline(micSource, activeAudioContext, 'audio:chunk:mic'))
 
-    // Try system audio via desktopCapturer (best-effort on macOS)
-    try {
-      const desktopStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: sourceId
-          }
-        } as unknown as MediaTrackConstraints,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: sourceId,
-            maxWidth: 1,
-            maxHeight: 1,
-            maxFrameRate: 1
-          }
-        } as unknown as MediaTrackConstraints
-      })
-      // Keep video tracks alive — macOS ties audio capture to the screen capture session
-      if (desktopStream.getAudioTracks().length > 0) {
-        activeStreams.push(desktopStream)
-        const systemSource = activeAudioContext.createMediaStreamSource(desktopStream)
+    // Capture system audio via BlackHole
+    if (deviceConfig.blackholeDeviceId) {
+      try {
+        const blackholeStream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: deviceConfig.blackholeDeviceId } }
+        })
+        activeStreams.push(blackholeStream)
+        const systemSource = activeAudioContext.createMediaStreamSource(blackholeStream)
         activeProcessors.push(
           createAudioPipeline(systemSource, activeAudioContext, 'audio:chunk:system')
         )
+      } catch (blackholeError) {
+        console.warn('BlackHole audio capture unavailable:', blackholeError)
       }
-    } catch (systemAudioError) {
-      console.warn('System audio capture unavailable, using microphone only:', systemAudioError)
     }
   } catch (captureError) {
     console.error('Failed to start audio capture:', captureError)
@@ -211,8 +203,8 @@ function stopAudioCapture(): void {
   activeStreams = []
 }
 
-ipcRenderer.on('audio:startCapture', (_event, sourceId: string) => {
-  startAudioCapture(sourceId)
+ipcRenderer.on('audio:startCapture', (_event, deviceConfig: { micDeviceId: string; blackholeDeviceId: string }) => {
+  startAudioCapture(deviceConfig)
 })
 
 ipcRenderer.on('audio:stopCapture', () => {
