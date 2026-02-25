@@ -25,12 +25,13 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
   useEffect(() => {
     const cleanup = window.mintAPI.onTranscriptChunk((chunk) => {
       setTranscript((prev) => {
+        const finalEntries = prev.filter((e) => e.isFinal)
         if (chunk.isFinal) {
-          const withoutInterim = prev.filter((e) => e.isFinal)
-          return [...withoutInterim, { ...chunk }]
+          return [...finalEntries, { ...chunk }]
         }
-        const withoutInterim = prev.filter((e) => e.isFinal)
-        return [...withoutInterim, { ...chunk }]
+        // Keep interim entries from other speakers, replace only this speaker's interim
+        const otherInterims = prev.filter((e) => !e.isFinal && e.speaker !== chunk.speaker)
+        return [...finalEntries, ...otherInterims, { ...chunk }]
       })
     })
     return cleanup
