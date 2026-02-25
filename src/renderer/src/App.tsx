@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { Auth } from './components/Auth'
 import { MeetingList } from './components/MeetingList'
 import { MeetingDetail } from './components/MeetingDetail'
 import { LiveRecording } from './components/LiveRecording'
@@ -9,8 +7,7 @@ import { AudioSetup } from './components/AudioSetup'
 
 type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
-function AppContent(): React.JSX.Element {
-  const { session, user } = useAuth()
+function App(): React.JSX.Element {
   const [view, setView] = useState<View>('meetings')
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
   const [meetingListKey, setMeetingListKey] = useState(0)
@@ -23,8 +20,6 @@ function AppContent(): React.JSX.Element {
     localStorage.setItem('onboardingComplete', 'true')
     setOnboardingComplete(true)
   }
-
-  if (!session) return <Auth />
 
   if (!onboardingComplete) {
     return <AudioSetup onComplete={handleOnboardingComplete} />
@@ -61,15 +56,9 @@ function AppContent(): React.JSX.Element {
         onStartRecording={async () => {
           try {
             const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
-            const userName =
-              localStorage.getItem('displayName') ||
-              user?.user_metadata?.full_name ||
-              user?.email?.split('@')[0] ||
-              'You'
+            const userName = localStorage.getItem('displayName') || 'You'
             await window.mintAPI.startRecording({
-              userId: session.user.id,
               title: defaultTitle,
-              accessToken: session.access_token,
               userName,
               micDeviceId: localStorage.getItem('micDeviceId') || undefined
             })
@@ -99,14 +88,6 @@ function AppContent(): React.JSX.Element {
       </nav>
       <main className="main-content">{renderContent()}</main>
     </div>
-  )
-}
-
-function App(): React.JSX.Element {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
   )
 }
 
