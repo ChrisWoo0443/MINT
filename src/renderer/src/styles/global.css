@@ -1053,6 +1053,11 @@ label {
   margin-bottom: 8px;
 }
 
+.detail-tags-row .tag-picker-dropdown {
+  right: auto;
+  left: 0;
+}
+
 /* ----- Tag Picker ----- */
 .tag-picker {
   position: relative;
@@ -1079,7 +1084,7 @@ label {
 .tag-picker-dropdown {
   position: absolute;
   top: 100%;
-  left: 0;
+  right: 0;
   z-index: 100;
   margin-top: 4px;
   min-width: 160px;
