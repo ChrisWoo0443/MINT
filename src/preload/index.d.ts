@@ -25,6 +25,7 @@ interface MeetingMetadata {
   status: string
   startedAt: string
   endedAt: string | null
+  tags?: string[]
 }
 
 interface NoteData {
@@ -38,6 +39,12 @@ interface TranscriptEntryData {
   content: string
   timestampStart: number
   timestampEnd: number
+}
+
+interface TagDefinition {
+  id: string
+  name: string
+  color: string
 }
 
 interface MintAPI {
@@ -62,6 +69,9 @@ interface MintAPI {
   getStoragePath: () => Promise<string>
   setStoragePath: (newPath: string) => Promise<void>
   pickStorageFolder: () => Promise<string | null>
+  getTags: () => Promise<TagDefinition[]>
+  saveTags: (tags: TagDefinition[]) => Promise<void>
+  setMeetingTags: (meetingId: string, tags: string[]) => Promise<void>
 }
 
 declare global {

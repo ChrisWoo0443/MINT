@@ -21,6 +21,7 @@ interface MeetingMetadata {
   status: string
   startedAt: string
   endedAt: string | null
+  tags?: string[]
 }
 
 interface NoteData {
@@ -34,6 +35,12 @@ interface TranscriptEntryData {
   content: string
   timestampStart: number
   timestampEnd: number
+}
+
+interface TagDefinition {
+  id: string
+  name: string
+  color: string
 }
 
 interface MintAPI {
@@ -58,6 +65,9 @@ interface MintAPI {
   getStoragePath: () => Promise<string>
   setStoragePath: (newPath: string) => Promise<void>
   pickStorageFolder: () => Promise<string | null>
+  getTags: () => Promise<TagDefinition[]>
+  saveTags: (tags: TagDefinition[]) => Promise<void>
+  setMeetingTags: (meetingId: string, tags: string[]) => Promise<void>
 }
 
 const mintAPI: MintAPI = {
@@ -125,7 +135,11 @@ const mintAPI: MintAPI = {
     ipcRenderer.invoke('meetings:getTranscripts', meetingId),
   getStoragePath: () => ipcRenderer.invoke('storage:getPath'),
   setStoragePath: (newPath: string) => ipcRenderer.invoke('storage:setPath', newPath),
-  pickStorageFolder: () => ipcRenderer.invoke('storage:pickFolder')
+  pickStorageFolder: () => ipcRenderer.invoke('storage:pickFolder'),
+  getTags: () => ipcRenderer.invoke('tags:get'),
+  saveTags: (tags: TagDefinition[]) => ipcRenderer.invoke('tags:save', tags),
+  setMeetingTags: (meetingId: string, tags: string[]) =>
+    ipcRenderer.invoke('meetings:setTags', meetingId, tags)
 }
 
 // --- Audio capture (renderer-side for macOS BlackHole + microphone) ---
