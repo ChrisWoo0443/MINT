@@ -1,24 +1,23 @@
-import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface Meeting {
   id: string
   title: string
-  started_at: string
-  ended_at: string | null
+  startedAt: string
+  endedAt: string | null
   status: string
 }
 
 interface Note {
   summary: string
   decisions: string[]
-  action_items: Array<{ task: string; assignee?: string; dueDate?: string }>
+  actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
 }
 
 interface Transcript {
   speaker: string | null
   content: string
-  timestamp_start: number
+  timestampStart: number
 }
 
 type ActiveTab = 'summary' | 'transcript'
@@ -41,27 +40,44 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
   const [activeTab, setActiveTab] = useState<ActiveTab>('summary')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
   const loadMeetingData = useCallback(async (): Promise<void> => {
-    const [meetingResult, notesResult, transcriptsResult] = await Promise.all([
-      supabase.from('meetings').select('*').eq('id', meetingId).single(),
-      supabase.from('notes').select('*').eq('meeting_id', meetingId).single(),
-      supabase
-        .from('transcripts')
-        .select('*')
-        .eq('meeting_id', meetingId)
-        .order('timestamp_start', { ascending: true })
+    const [meetingData, notesData, transcriptsData] = await Promise.all([
+      window.mintAPI.getMeeting(meetingId),
+      window.mintAPI.getMeetingNotes(meetingId),
+      window.mintAPI.getMeetingTranscripts(meetingId)
     ])
 
-    if (meetingResult.data) setMeeting(meetingResult.data)
-    if (notesResult.data) setNotes(notesResult.data)
-    if (transcriptsResult.data) setTranscripts(transcriptsResult.data)
+    setMeeting(meetingData)
+    if (notesData) setNotes(notesData)
+    setTranscripts(transcriptsData)
   }, [meetingId])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMeetingData()
   }, [loadMeetingData])
+
+  useEffect(() => {
+    if (isEditingTitle) titleInputRef.current?.select()
+  }, [isEditingTitle])
+
+  const startRename = (): void => {
+    if (!meeting) return
+    setEditTitle(meeting.title)
+    setIsEditingTitle(true)
+  }
+
+  const commitRename = async (): Promise<void> => {
+    const trimmed = editTitle.trim()
+    if (trimmed && meeting && trimmed !== meeting.title) {
+      await window.mintAPI.renameMeeting(meetingId, trimmed)
+      setMeeting({ ...meeting, title: trimmed })
+    }
+    setIsEditingTitle(false)
+  }
 
   const filteredTranscripts = transcripts.filter((transcript) =>
     transcript.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -88,7 +104,7 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
           className="delete-button"
           onClick={async () => {
             if (!window.confirm('Delete this meeting? This cannot be undone.')) return
-            await supabase.from('meetings').delete().eq('id', meetingId)
+            await window.mintAPI.deleteMeeting(meetingId)
             onBack()
           }}
         >
@@ -96,8 +112,24 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
         </button>
       </div>
 
-      <h2>{meeting.title}</h2>
-      <p className="meeting-date">{new Date(meeting.started_at).toLocaleString()}</p>
+      {isEditingTitle ? (
+        <input
+          ref={titleInputRef}
+          className="rename-input rename-input-detail"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename()
+            if (e.key === 'Escape') setIsEditingTitle(false)
+          }}
+        />
+      ) : (
+        <h2 className="editable-title" onDoubleClick={startRename}>
+          {meeting.title}
+        </h2>
+      )}
+      <p className="meeting-date">{new Date(meeting.startedAt).toLocaleString()}</p>
       <span className={`status-badge status-${meeting.status}`}>{meeting.status}</span>
 
       <div className="tabs">
@@ -137,11 +169,11 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
                 </section>
               )}
 
-              {notes.action_items.length > 0 && (
+              {notes.actionItems.length > 0 && (
                 <section className="summary-section">
                   <h3>Action Items</h3>
                   <ul className="action-items">
-                    {notes.action_items.map((item, index) => (
+                    {notes.actionItems.map((item, index) => (
                       <li key={index} className="action-item">
                         <label>
                           <input type="checkbox" />
@@ -181,7 +213,7 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
               {filteredTranscripts.map((transcript, index) => (
                 <div key={index} className="transcript-row">
                   <span className="transcript-timestamp">
-                    {formatTimestamp(transcript.timestamp_start)}
+                    {formatTimestamp(transcript.timestampStart)}
                   </span>
                   <span className="transcript-speaker">{transcript.speaker ?? 'Unknown'}</span>
                   <span className="transcript-content">{transcript.content}</span>
