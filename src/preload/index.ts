@@ -68,6 +68,13 @@ interface MintAPI {
   getTags: () => Promise<TagDefinition[]>
   saveTags: (tags: TagDefinition[]) => Promise<void>
   setMeetingTags: (meetingId: string, tags: string[]) => Promise<void>
+  generateNotes: (args: {
+    meetingId: string
+    openaiApiKey?: string
+    notesProvider?: 'openai' | 'ollama'
+    ollamaUrl?: string
+    ollamaModel?: string
+  }) => Promise<NoteData>
 }
 
 const mintAPI: MintAPI = {
@@ -139,7 +146,14 @@ const mintAPI: MintAPI = {
   getTags: () => ipcRenderer.invoke('tags:get'),
   saveTags: (tags: TagDefinition[]) => ipcRenderer.invoke('tags:save', tags),
   setMeetingTags: (meetingId: string, tags: string[]) =>
-    ipcRenderer.invoke('meetings:setTags', meetingId, tags)
+    ipcRenderer.invoke('meetings:setTags', meetingId, tags),
+  generateNotes: (args: {
+    meetingId: string
+    openaiApiKey?: string
+    notesProvider?: 'openai' | 'ollama'
+    ollamaUrl?: string
+    ollamaModel?: string
+  }) => ipcRenderer.invoke('meetings:generateNotes', args)
 }
 
 // --- Audio capture (renderer-side for macOS BlackHole + microphone) ---

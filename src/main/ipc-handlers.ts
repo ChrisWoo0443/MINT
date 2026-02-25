@@ -13,10 +13,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   const localStorageService = new LocalStorageService()
 
   let currentMeetingId: string | null = null
-  let currentOpenaiApiKey: string = process.env.OPENAI_API_KEY || ''
-  let currentNotesProvider: 'openai' | 'ollama' = 'openai'
-  let currentOllamaUrl: string = 'http://localhost:11434'
-  let currentOllamaModel: string = ''
 
   // --- Storage handlers ---
 
@@ -94,11 +90,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         currentMeetingId = await localStorageService.createMeeting(title)
 
         const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
-        currentOpenaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
-        currentNotesProvider = args.notesProvider || 'openai'
-        currentOllamaUrl = args.ollamaUrl || 'http://localhost:11434'
-        currentOllamaModel = args.ollamaModel || ''
-
         const handleTranscript = async (result: {
           speaker: string | null
           content: string
@@ -161,8 +152,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     micDeepgramService.stopStreaming()
     systemDeepgramService.stopStreaming()
 
-    mainWindow.webContents.send('recording:status', 'processing')
-
     if (!currentMeetingId) {
       mainWindow.webContents.send('recording:status', 'stopped')
       return
@@ -171,58 +160,79 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     const meetingId = currentMeetingId
     currentMeetingId = null
 
-    try {
-      await localStorageService.updateMeetingStatus(meetingId, 'processing')
+    localStorageService.clearTranscriptBuffer(meetingId)
+    await localStorageService.updateMeetingStatus(
+      meetingId,
+      'completed',
+      new Date().toISOString()
+    )
 
-      const fullTranscript = await localStorageService.getFullTranscript(meetingId)
-      localStorageService.clearTranscriptBuffer(meetingId)
+    mainWindow.webContents.send('recording:status', 'stopped')
+  })
 
-      if (!fullTranscript.trim()) {
+  ipcMain.handle(
+    'meetings:generateNotes',
+    async (
+      _event,
+      args: {
+        meetingId: string
+        openaiApiKey?: string
+        notesProvider?: 'openai' | 'ollama'
+        ollamaUrl?: string
+        ollamaModel?: string
+      }
+    ) => {
+      const { meetingId } = args
+      const openaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
+      const notesProvider = args.notesProvider || 'openai'
+      const ollamaUrl = args.ollamaUrl || 'http://localhost:11434'
+      const ollamaModel = args.ollamaModel || ''
+
+      try {
+        await localStorageService.updateMeetingStatus(meetingId, 'processing')
+
+        const fullTranscript = await localStorageService.getFullTranscript(meetingId)
+
+        if (!fullTranscript.trim()) {
+          await localStorageService.updateMeetingStatus(
+            meetingId,
+            'completed',
+            new Date().toISOString()
+          )
+          throw new Error('No transcript available to generate notes from.')
+        }
+
+        const openaiService =
+          notesProvider === 'ollama'
+            ? new OpenAIService({
+                provider: 'ollama',
+                ollamaUrl: ollamaUrl,
+                ollamaModel: ollamaModel
+              })
+            : new OpenAIService({ provider: 'openai', apiKey: openaiApiKey })
+        const { notes } = await openaiService.generateNotes(fullTranscript)
+
+        await localStorageService.saveNotes(
+          meetingId,
+          notes.summary,
+          notes.decisions,
+          notes.actionItems
+        )
+
         await localStorageService.updateMeetingStatus(
           meetingId,
           'completed',
           new Date().toISOString()
         )
-        mainWindow.webContents.send('recording:status', 'stopped')
-        return
+
+        return notes
+      } catch (error) {
+        console.error('Failed to generate notes:', error)
+        await localStorageService.updateMeetingStatus(meetingId, 'completed')
+        throw error
       }
-
-      const openaiService =
-        currentNotesProvider === 'ollama'
-          ? new OpenAIService({
-              provider: 'ollama',
-              ollamaUrl: currentOllamaUrl,
-              ollamaModel: currentOllamaModel
-            })
-          : new OpenAIService({ provider: 'openai', apiKey: currentOpenaiApiKey })
-      const { notes } = await openaiService.generateNotes(fullTranscript)
-
-      await localStorageService.saveNotes(
-        meetingId,
-        notes.summary,
-        notes.decisions,
-        notes.actionItems
-      )
-
-      await localStorageService.updateMeetingStatus(
-        meetingId,
-        'completed',
-        new Date().toISOString()
-      )
-
-      mainWindow.webContents.send('recording:status', 'stopped')
-    } catch (processingError) {
-      console.error('Failed to process meeting notes:', processingError)
-
-      try {
-        await localStorageService.updateMeetingStatus(meetingId, 'failed')
-      } catch (updateError) {
-        console.error('Failed to update meeting status to failed:', updateError)
-      }
-
-      mainWindow.webContents.send('recording:status', 'stopped')
     }
-  })
+  )
 
   // --- Audio handlers ---
 

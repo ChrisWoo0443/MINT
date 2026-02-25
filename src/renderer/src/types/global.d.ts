@@ -67,6 +67,13 @@ interface MintAPI {
   getTags: () => Promise<TagDefinition[]>
   saveTags: (tags: TagDefinition[]) => Promise<void>
   setMeetingTags: (meetingId: string, tags: string[]) => Promise<void>
+  generateNotes: (args: {
+    meetingId: string
+    openaiApiKey?: string
+    notesProvider?: 'openai' | 'ollama'
+    ollamaUrl?: string
+    ollamaModel?: string
+  }) => Promise<NoteData>
 }
 
 declare global {

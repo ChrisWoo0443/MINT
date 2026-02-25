@@ -49,6 +49,8 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   const [activeTab, setActiveTab] = useState<ActiveTab>('summary')
   const [availableTags, setAvailableTags] = useState<TagDefinition[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const titleInputRef = useRef<HTMLInputElement>(null)
@@ -105,7 +107,30 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
     transcript.content.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const isProcessing = meeting?.status === 'processing' && notes === null
+  const handleGenerateNotes = async (): Promise<void> => {
+    if (!meeting) return
+    setIsGenerating(true)
+    setGenerateError(null)
+    try {
+      const notesProvider =
+        (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || 'openai'
+      const generatedNotes = await window.mintAPI.generateNotes({
+        meetingId,
+        openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
+        notesProvider,
+        ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
+        ollamaModel: localStorage.getItem('ollamaModel') || undefined
+      })
+      setNotes(generatedNotes)
+      setMeeting({ ...meeting, status: 'completed' })
+    } catch (error) {
+      setGenerateError(error instanceof Error ? error.message : 'Failed to generate notes.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const hasTranscripts = transcripts.length > 0
 
   if (!meeting) {
     return (
@@ -188,7 +213,7 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
 
       {activeTab === 'summary' && (
         <div className="tab-content">
-          {isProcessing ? (
+          {isGenerating ? (
             <p>Generating notes...</p>
           ) : notes ? (
             <div className="summary-content">
@@ -229,9 +254,25 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
                   </ul>
                 </section>
               )}
+
+              <button className="generate-notes-button" onClick={handleGenerateNotes}>
+                Regenerate Notes
+              </button>
             </div>
           ) : (
-            <p>No notes available for this meeting.</p>
+            <div className="no-notes">
+              {hasTranscripts ? (
+                <>
+                  <p>No notes have been generated for this meeting yet.</p>
+                  <button className="generate-notes-button" onClick={handleGenerateNotes}>
+                    Generate Notes
+                  </button>
+                </>
+              ) : (
+                <p>No transcript available to generate notes from.</p>
+              )}
+              {generateError && <p className="generate-error">{generateError}</p>}
+            </div>
           )}
         </div>
       )}
