@@ -51,6 +51,18 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     localStorageService.renameMeeting(meetingId, newTitle)
   )
 
+  ipcMain.handle('tags:get', async () => localStorageService.getTags())
+
+  ipcMain.handle(
+    'tags:save',
+    async (_event, tags: Array<{ id: string; name: string; color: string }>) =>
+      localStorageService.saveTags(tags)
+  )
+
+  ipcMain.handle('meetings:setTags', async (_event, meetingId: string, tagIds: string[]) =>
+    localStorageService.setMeetingTags(meetingId, tagIds)
+  )
+
   ipcMain.handle('meetings:getNotes', async (_event, meetingId: string) =>
     localStorageService.getNote(meetingId)
   )
