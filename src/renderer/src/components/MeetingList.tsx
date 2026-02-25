@@ -79,7 +79,7 @@ export function MeetingList({
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [dragOverSection, setDragOverSection] = useState<string | null>(null)
-  const dragCounter = useRef(0)
+  const dragCounters = useRef(new Map<string, number>())
   const hasDeepgramKey = Boolean(localStorage.getItem('deepgramApiKey'))
 
   const loadData = useCallback(async (): Promise<void> => {
@@ -96,19 +96,32 @@ export function MeetingList({
     loadData()
   }, [loadData])
 
+  const dateSectionSet = useMemo(() => new Set(DATE_SECTION_ORDER), [])
+
   const { customGroups, dateGroups } = useMemo(() => {
-    const assignedMeetingIds = new Set(Object.keys(sectionAssignments))
+    const customSectionIds = new Set(customSections.map((s) => s.id))
 
     const customMap = new Map<string, Meeting[]>()
     for (const section of customSections) {
       customMap.set(section.id, [])
     }
+
+    const dateMap = new Map<string, Meeting[]>()
+
     for (const meeting of meetings) {
-      const sectionId = sectionAssignments[meeting.id]
-      if (sectionId && customMap.has(sectionId)) {
-        customMap.get(sectionId)!.push(meeting)
+      const assigned = sectionAssignments[meeting.id]
+
+      if (assigned && customSectionIds.has(assigned)) {
+        customMap.get(assigned)!.push(meeting)
+      } else {
+        const dateSection =
+          assigned && dateSectionSet.has(assigned) ? assigned : getDateSection(meeting.startedAt)
+        const list = dateMap.get(dateSection) || []
+        list.push(meeting)
+        dateMap.set(dateSection, list)
       }
     }
+
     const customResult = customSections.map((section) => ({
       section: section.id,
       name: section.name,
@@ -116,25 +129,17 @@ export function MeetingList({
       meetings: customMap.get(section.id) || []
     }))
 
-    const dateMap = new Map<string, Meeting[]>()
-    for (const meeting of meetings) {
-      if (assignedMeetingIds.has(meeting.id)) continue
-      const section = getDateSection(meeting.startedAt)
-      const list = dateMap.get(section) || []
-      list.push(meeting)
-      dateMap.set(section, list)
-    }
-    const dateResult = DATE_SECTION_ORDER
-      .filter((section) => dateMap.has(section))
-      .map((section) => ({
+    const dateResult = DATE_SECTION_ORDER.filter((section) => dateMap.has(section)).map(
+      (section) => ({
         section,
         name: sectionNames[section] || section,
         isCustom: false as const,
         meetings: dateMap.get(section)!
-      }))
+      })
+    )
 
     return { customGroups: customResult, dateGroups: dateResult }
-  }, [meetings, customSections, sectionAssignments, sectionNames])
+  }, [meetings, customSections, sectionAssignments, sectionNames, dateSectionSet])
 
   const allGroups = useMemo(
     () => [...customGroups, ...dateGroups],
@@ -226,7 +231,8 @@ export function MeetingList({
 
   const handleSectionDragEnter = (e: React.DragEvent, sectionId: string): void => {
     e.preventDefault()
-    dragCounter.current++
+    const counters = dragCounters.current
+    counters.set(sectionId, (counters.get(sectionId) || 0) + 1)
     setDragOverSection(sectionId)
   }
 
@@ -235,26 +241,25 @@ export function MeetingList({
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const handleSectionDragLeave = (): void => {
-    dragCounter.current--
-    if (dragCounter.current <= 0) {
-      dragCounter.current = 0
-      setDragOverSection(null)
+  const handleSectionDragLeave = (sectionId: string): void => {
+    const counters = dragCounters.current
+    const count = (counters.get(sectionId) || 1) - 1
+    counters.set(sectionId, count)
+    if (count <= 0) {
+      counters.delete(sectionId)
+      setDragOverSection((prev) => (prev === sectionId ? null : prev))
     }
   }
 
-  const handleSectionDrop = (e: React.DragEvent, sectionId: string, isCustom: boolean): void => {
+  const handleSectionDrop = (e: React.DragEvent, sectionId: string): void => {
     e.preventDefault()
-    dragCounter.current = 0
+    e.stopPropagation()
+    dragCounters.current.clear()
     setDragOverSection(null)
-    const meetingId = e.dataTransfer.getData('text/plain')
+    const meetingId = e.dataTransfer.getData('application/x-mint-meeting')
     if (!meetingId) return
 
-    if (isCustom) {
-      moveMeeting(meetingId, sectionId)
-    } else {
-      moveMeeting(meetingId, null)
-    }
+    moveMeeting(meetingId, sectionId)
   }
 
   const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
@@ -309,8 +314,8 @@ export function MeetingList({
               className={`meeting-section ${isDragOver ? 'drag-over' : ''}`}
               onDragEnter={(e) => handleSectionDragEnter(e, section)}
               onDragOver={handleSectionDragOver}
-              onDragLeave={handleSectionDragLeave}
-              onDrop={(e) => handleSectionDrop(e, section, isCustom)}
+              onDragLeave={() => handleSectionDragLeave(section)}
+              onDrop={(e) => handleSectionDrop(e, section)}
             >
               <div className="meeting-section-header">
                 <button

@@ -377,6 +377,9 @@ label {
 /* ----- Date Sections ----- */
 .meeting-section {
   margin-bottom: 20px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  min-height: 48px;
 }
 
 .meeting-section-header {

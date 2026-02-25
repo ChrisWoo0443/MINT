@@ -52,7 +52,7 @@ export function MeetingCard({
 
   const handleDragStart = (e: React.DragEvent): void => {
     didDrag.current = true
-    e.dataTransfer.setData('text/plain', meeting.id)
+    e.dataTransfer.setData('application/x-mint-meeting', meeting.id)
     e.dataTransfer.effectAllowed = 'move'
     // Use the full card as the drag ghost
     if (cardRef.current) {
