@@ -55,9 +55,7 @@ export function MeetingList({
       ? currentTags.filter((t) => t !== tagId)
       : [...currentTags, tagId]
     await window.mintAPI.setMeetingTags(meetingId, newTags)
-    setMeetings((prev) =>
-      prev.map((m) => (m.id === meetingId ? { ...m, tags: newTags } : m))
-    )
+    setMeetings((prev) => prev.map((m) => (m.id === meetingId ? { ...m, tags: newTags } : m)))
   }
 
   return (

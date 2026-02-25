@@ -26,9 +26,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   const [ollamaUrl, setOllamaUrl] = useState(
     () => localStorage.getItem('ollamaUrl') || 'http://localhost:11434'
   )
-  const [ollamaModel, setOllamaModel] = useState(
-    () => localStorage.getItem('ollamaModel') || ''
-  )
+  const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('ollamaModel') || '')
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [tags, setTags] = useState<TagDefinition[]>([])
@@ -49,21 +47,24 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     window.mintAPI.getTags().then(setTags)
   }, [loadDevices])
 
-  const loadOllamaModels = useCallback(async (url: string): Promise<void> => {
-    setOllamaStatus('loading')
-    const models = await window.mintAPI.listOllamaModels(url)
-    if (models === null) {
-      setOllamaModels([])
-      setOllamaStatus('error')
-      return
-    }
-    setOllamaModels(models)
-    setOllamaStatus('idle')
-    if (models.length > 0 && !ollamaModel) {
-      setOllamaModel(models[0])
-      localStorage.setItem('ollamaModel', models[0])
-    }
-  }, [ollamaModel])
+  const loadOllamaModels = useCallback(
+    async (url: string): Promise<void> => {
+      setOllamaStatus('loading')
+      const models = await window.mintAPI.listOllamaModels(url)
+      if (models === null) {
+        setOllamaModels([])
+        setOllamaStatus('error')
+        return
+      }
+      setOllamaModels(models)
+      setOllamaStatus('idle')
+      if (models.length > 0 && !ollamaModel) {
+        setOllamaModel(models[0])
+        localStorage.setItem('ollamaModel', models[0])
+      }
+    },
+    [ollamaModel]
+  )
 
   useEffect(() => {
     if (notesProvider === 'ollama') {

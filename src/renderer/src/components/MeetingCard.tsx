@@ -50,7 +50,12 @@ export function MeetingCard({
       <div className="meeting-card-header">
         <div className="meeting-card-tags">
           {assignedTags.map((tag) => (
-            <span key={tag.id} className="tag-dot" style={{ background: tag.color }} title={tag.name} />
+            <span
+              key={tag.id}
+              className="tag-dot"
+              style={{ background: tag.color }}
+              title={tag.name}
+            />
           ))}
         </div>
         <h3>{meeting.title}</h3>

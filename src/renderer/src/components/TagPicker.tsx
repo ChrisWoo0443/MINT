@@ -12,7 +12,11 @@ interface TagPickerProps {
   onToggleTag: (tagId: string) => void
 }
 
-export function TagPicker({ tags, selectedTagIds, onToggleTag }: TagPickerProps): React.JSX.Element {
+export function TagPicker({
+  tags,
+  selectedTagIds,
+  onToggleTag
+}: TagPickerProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
 

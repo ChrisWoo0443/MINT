@@ -155,7 +155,12 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
         {availableTags
           .filter((t) => (meeting.tags ?? []).includes(t.id))
           .map((tag) => (
-            <span key={tag.id} className="tag-dot" style={{ background: tag.color }} title={tag.name} />
+            <span
+              key={tag.id}
+              className="tag-dot"
+              style={{ background: tag.color }}
+              title={tag.name}
+            />
           ))}
         <TagPicker
           tags={availableTags}
