@@ -54,9 +54,6 @@ interface MintAPI {
   onRecordingStatus: (callback: (status: string) => void) => () => void
   getAudioDevices: () => Promise<MediaDeviceInfo[]>
   setAudioDevice: (deviceId: string) => Promise<void>
-  onTrayStartRecording: (callback: () => void) => () => void
-  onTrayStopRecording: (callback: () => void) => () => void
-  updateTrayRecordingState: (isRecording: boolean) => void
   openExternal: (url: string) => Promise<void>
   openApp: (appPath: string) => Promise<string>
   listOllamaModels: (url: string) => Promise<string[] | null>

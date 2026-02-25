@@ -50,9 +50,6 @@ interface MintAPI {
   onRecordingStatus: (callback: (status: string) => void) => () => void
   getAudioDevices: () => Promise<MediaDeviceInfo[]>
   setAudioDevice: (deviceId: string) => Promise<void>
-  onTrayStartRecording: (callback: () => void) => () => void
-  onTrayStopRecording: (callback: () => void) => () => void
-  updateTrayRecordingState: (isRecording: boolean) => void
   openExternal: (url: string) => Promise<void>
   openApp: (appPath: string) => Promise<string>
   listOllamaModels: (url: string) => Promise<string[] | null>
@@ -103,30 +100,6 @@ const mintAPI: MintAPI = {
 
   getAudioDevices: () => ipcRenderer.invoke('audio:getDevices'),
   setAudioDevice: (deviceId: string) => ipcRenderer.invoke('audio:setDevice', deviceId),
-
-  onTrayStartRecording: (callback: () => void) => {
-    const listener = (): void => {
-      callback()
-    }
-    ipcRenderer.on('tray:startRecording', listener)
-    return () => {
-      ipcRenderer.removeListener('tray:startRecording', listener)
-    }
-  },
-
-  onTrayStopRecording: (callback: () => void) => {
-    const listener = (): void => {
-      callback()
-    }
-    ipcRenderer.on('tray:stopRecording', listener)
-    return () => {
-      ipcRenderer.removeListener('tray:stopRecording', listener)
-    }
-  },
-
-  updateTrayRecordingState: (isRecording: boolean) => {
-    ipcRenderer.send('tray:updateRecordingState', isRecording)
-  },
 
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   openApp: (appPath: string) => ipcRenderer.invoke('shell:openApp', appPath),
