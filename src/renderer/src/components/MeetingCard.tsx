@@ -1,8 +1,8 @@
 interface Meeting {
   id: string
   title: string
-  started_at: string
-  ended_at: string | null
+  startedAt: string
+  endedAt: string | null
   status: string
 }
 
@@ -13,9 +13,9 @@ interface MeetingCardProps {
 }
 
 export function MeetingCard({ meeting, onClick, onDelete }: MeetingCardProps): React.JSX.Element {
-  const date = new Date(meeting.started_at).toLocaleDateString()
-  const duration = meeting.ended_at
-    ? formatDuration(new Date(meeting.started_at), new Date(meeting.ended_at))
+  const date = new Date(meeting.startedAt).toLocaleDateString()
+  const duration = meeting.endedAt
+    ? formatDuration(new Date(meeting.startedAt), new Date(meeting.endedAt))
     : 'In progress'
 
   const handleDelete = (e: React.MouseEvent): void => {
@@ -29,13 +29,13 @@ export function MeetingCard({ meeting, onClick, onDelete }: MeetingCardProps): R
     <div className="meeting-card" onClick={onClick}>
       <div className="meeting-card-header">
         <h3>{meeting.title}</h3>
-        <button className="delete-button" onClick={handleDelete} title="Delete meeting">
-          ✕
-        </button>
       </div>
       <p>{date}</p>
       <p>{duration}</p>
       <span className={`status-badge status-${meeting.status}`}>{meeting.status}</span>
+      <button className="delete-button" onClick={handleDelete} title="Delete meeting">
+        ✕
+      </button>
     </div>
   )
 }
