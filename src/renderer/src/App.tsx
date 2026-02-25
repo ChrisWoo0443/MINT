@@ -5,16 +5,30 @@ import { MeetingList } from './components/MeetingList'
 import { MeetingDetail } from './components/MeetingDetail'
 import { LiveRecording } from './components/LiveRecording'
 import { Settings } from './components/Settings'
+import { AudioSetup } from './components/AudioSetup'
 
 type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
 function AppContent(): React.JSX.Element {
-  const { session } = useAuth()
+  const { session, user } = useAuth()
   const [view, setView] = useState<View>('meetings')
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
   const [meetingListKey, setMeetingListKey] = useState(0)
+  const [onboardingComplete, setOnboardingComplete] = useState(
+    () => localStorage.getItem('onboardingComplete') === 'true'
+  )
+
+  const handleOnboardingComplete = (displayName: string): void => {
+    localStorage.setItem('displayName', displayName)
+    localStorage.setItem('onboardingComplete', 'true')
+    setOnboardingComplete(true)
+  }
 
   if (!session) return <Auth />
+
+  if (!onboardingComplete) {
+    return <AudioSetup onComplete={handleOnboardingComplete} />
+  }
 
   const renderContent = (): React.JSX.Element => {
     if (view === 'recording') {
@@ -30,16 +44,18 @@ function AppContent(): React.JSX.Element {
     }
 
     if (view === 'detail' && selectedMeetingId) {
-      return (
-        <MeetingDetail
-          meetingId={selectedMeetingId}
-          onBack={() => setView('meetings')}
-        />
-      )
+      return <MeetingDetail meetingId={selectedMeetingId} onBack={() => setView('meetings')} />
     }
 
     if (view === 'settings') {
-      return <Settings />
+      return (
+        <Settings
+          onRerunSetup={() => {
+            localStorage.removeItem('onboardingComplete')
+            setOnboardingComplete(false)
+          }}
+        />
+      )
     }
 
     return (
@@ -52,10 +68,13 @@ function AppContent(): React.JSX.Element {
         onStartRecording={async () => {
           try {
             const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
+            const userName = localStorage.getItem('displayName') || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You'
             await window.mintAPI.startRecording({
               userId: session.user.id,
               title: defaultTitle,
-              accessToken: session.access_token
+              accessToken: session.access_token,
+              userName,
+              blackholeDeviceId: localStorage.getItem('blackholeDeviceId') || ''
             })
             setView('recording')
           } catch (error) {
@@ -70,15 +89,14 @@ function AppContent(): React.JSX.Element {
     <div className="app-layout">
       <nav className="sidebar">
         <button
-          className={view === 'meetings' || view === 'detail' || view === 'recording' ? 'active' : ''}
+          className={
+            view === 'meetings' || view === 'detail' || view === 'recording' ? 'active' : ''
+          }
           onClick={() => setView('meetings')}
         >
           Meetings
         </button>
-        <button
-          className={view === 'settings' ? 'active' : ''}
-          onClick={() => setView('settings')}
-        >
+        <button className={view === 'settings' ? 'active' : ''} onClick={() => setView('settings')}>
           Settings
         </button>
       </nav>
