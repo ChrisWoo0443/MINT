@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
 
 export function Settings(): React.JSX.Element {
-  const { user, signOut } = useAuth()
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string>(
     () => localStorage.getItem('micDeviceId') || ''
   )
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
+  const [storagePath, setStoragePath] = useState('')
 
   const loadDevices = useCallback(async (): Promise<void> => {
     const devices = await navigator.mediaDevices.enumerateDevices()
@@ -19,8 +18,8 @@ export function Settings(): React.JSX.Element {
   }, [selectedDevice])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDevices()
+    window.mintAPI.getStoragePath().then(setStoragePath)
   }, [loadDevices])
 
   const handleDeviceChange = async (deviceId: string): Promise<void> => {
@@ -32,6 +31,14 @@ export function Settings(): React.JSX.Element {
   const handleNameChange = (name: string): void => {
     setDisplayName(name)
     localStorage.setItem('displayName', name)
+  }
+
+  const handlePickFolder = async (): Promise<void> => {
+    const picked = await window.mintAPI.pickStorageFolder()
+    if (picked) {
+      setStoragePath(picked)
+      await window.mintAPI.setStoragePath(picked)
+    }
   }
 
   return (
@@ -67,9 +74,15 @@ export function Settings(): React.JSX.Element {
       </section>
 
       <section>
-        <h3>Account</h3>
-        <p>{user?.email}</p>
-        <button onClick={signOut}>Sign Out</button>
+        <h3>Storage</h3>
+        <label>Meetings Folder</label>
+        <div className="storage-picker">
+          <input type="text" value={storagePath} readOnly />
+          <button type="button" onClick={handlePickFolder}>
+            Browse
+          </button>
+        </div>
+        <p className="setup-hint">Meeting transcripts and notes are saved here.</p>
       </section>
     </div>
   )
