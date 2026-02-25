@@ -13,6 +13,7 @@ interface StartRecordingArgs {
   userId: string
   title: string
   accessToken: string
+  userName: string
 }
 
 interface MintAPI {
@@ -25,6 +26,8 @@ interface MintAPI {
   onTrayStartRecording: (callback: () => void) => () => void
   onTrayStopRecording: (callback: () => void) => () => void
   updateTrayRecordingState: (isRecording: boolean) => void
+  openExternal: (url: string) => Promise<void>
+  openApp: (appPath: string) => Promise<string>
 }
 
 const mintAPI: MintAPI = {
@@ -76,17 +79,19 @@ const mintAPI: MintAPI = {
 
   updateTrayRecordingState: (isRecording: boolean) => {
     ipcRenderer.send('tray:updateRecordingState', isRecording)
-  }
+  },
+
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  openApp: (appPath: string) => ipcRenderer.invoke('shell:openApp', appPath)
 }
 
 // --- Audio capture (renderer-side for macOS desktopCapturer audio) ---
 
 const TARGET_SAMPLE_RATE = 16000
 
-let activeAudioStream: MediaStream | null = null
+let activeStreams: MediaStream[] = []
 let activeAudioContext: AudioContext | null = null
-let activeScriptProcessor: ScriptProcessorNode | null = null
-let activeSourceNode: MediaStreamAudioSourceNode | null = null
+let activeProcessors: ScriptProcessorNode[] = []
 
 function convertFloat32ToLinear16(float32Samples: Float32Array): Buffer {
   const pcmBuffer = Buffer.alloc(float32Samples.length * 2)
@@ -121,69 +126,77 @@ function downsampleBuffer(
   return outputBuffer
 }
 
+function createAudioPipeline(
+  source: MediaStreamAudioSourceNode,
+  audioContext: AudioContext,
+  ipcChannel: string
+): ScriptProcessorNode {
+  const nativeSampleRate = audioContext.sampleRate
+  const processor = audioContext.createScriptProcessor(4096, 1, 1)
+
+  processor.onaudioprocess = (audioProcessingEvent: AudioProcessingEvent): void => {
+    const inputChannelData = audioProcessingEvent.inputBuffer.getChannelData(0)
+    const downsampledData = downsampleBuffer(inputChannelData, nativeSampleRate, TARGET_SAMPLE_RATE)
+    const linear16Chunk = convertFloat32ToLinear16(downsampledData)
+    ipcRenderer.send(ipcChannel, linear16Chunk)
+  }
+
+  source.connect(processor)
+  processor.connect(audioContext.destination)
+  return processor
+}
+
 async function startAudioCapture(sourceId: string): Promise<void> {
   try {
-    // On macOS, system audio capture requires a screen source with audio enabled.
-    // We request both video+audio, then discard the video track.
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: sourceId
-        }
-      } as unknown as MediaTrackConstraints,
-      video: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: sourceId,
-          maxWidth: 1,
-          maxHeight: 1,
-          maxFrameRate: 1
-        }
-      } as unknown as MediaTrackConstraints
-    })
-
-    // Discard the video track — we only need audio
-    stream.getVideoTracks().forEach((track) => track.stop())
-
-    activeAudioStream = stream
     activeAudioContext = new AudioContext()
-    const nativeSampleRate = activeAudioContext.sampleRate
 
-    activeSourceNode = activeAudioContext.createMediaStreamSource(stream)
+    // Always capture microphone
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    activeStreams.push(micStream)
+    const micSource = activeAudioContext.createMediaStreamSource(micStream)
+    activeProcessors.push(createAudioPipeline(micSource, activeAudioContext, 'audio:chunk:mic'))
 
-    const scriptProcessorBufferSize = 4096
-    activeScriptProcessor = activeAudioContext.createScriptProcessor(
-      scriptProcessorBufferSize,
-      1,
-      1
-    )
-
-    activeScriptProcessor.onaudioprocess = (audioProcessingEvent: AudioProcessingEvent): void => {
-      const inputChannelData = audioProcessingEvent.inputBuffer.getChannelData(0)
-      const downsampledData = downsampleBuffer(inputChannelData, nativeSampleRate, TARGET_SAMPLE_RATE)
-      const linear16Chunk = convertFloat32ToLinear16(downsampledData)
-      ipcRenderer.send('audio:chunk', linear16Chunk)
+    // Try system audio via desktopCapturer (best-effort on macOS)
+    try {
+      const desktopStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sourceId
+          }
+        } as unknown as MediaTrackConstraints,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: sourceId,
+            maxWidth: 1,
+            maxHeight: 1,
+            maxFrameRate: 1
+          }
+        } as unknown as MediaTrackConstraints
+      })
+      // Keep video tracks alive — macOS ties audio capture to the screen capture session
+      if (desktopStream.getAudioTracks().length > 0) {
+        activeStreams.push(desktopStream)
+        const systemSource = activeAudioContext.createMediaStreamSource(desktopStream)
+        activeProcessors.push(
+          createAudioPipeline(systemSource, activeAudioContext, 'audio:chunk:system')
+        )
+      }
+    } catch (systemAudioError) {
+      console.warn('System audio capture unavailable, using microphone only:', systemAudioError)
     }
-
-    activeSourceNode.connect(activeScriptProcessor)
-    activeScriptProcessor.connect(activeAudioContext.destination)
   } catch (captureError) {
     console.error('Failed to start audio capture:', captureError)
   }
 }
 
 function stopAudioCapture(): void {
-  if (activeScriptProcessor) {
-    activeScriptProcessor.disconnect()
-    activeScriptProcessor.onaudioprocess = null
-    activeScriptProcessor = null
+  for (const processor of activeProcessors) {
+    processor.disconnect()
+    processor.onaudioprocess = null
   }
-
-  if (activeSourceNode) {
-    activeSourceNode.disconnect()
-    activeSourceNode = null
-  }
+  activeProcessors = []
 
   if (activeAudioContext) {
     activeAudioContext.close().catch((closeError) => {
@@ -192,10 +205,10 @@ function stopAudioCapture(): void {
     activeAudioContext = null
   }
 
-  if (activeAudioStream) {
-    activeAudioStream.getTracks().forEach((track) => track.stop())
-    activeAudioStream = null
+  for (const stream of activeStreams) {
+    stream.getTracks().forEach((track) => track.stop())
   }
+  activeStreams = []
 }
 
 ipcRenderer.on('audio:startCapture', (_event, sourceId: string) => {

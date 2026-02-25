@@ -12,6 +12,7 @@ interface StartRecordingArgs {
   userId: string
   title: string
   accessToken: string
+  userName: string
 }
 
 interface MintAPI {
@@ -24,6 +25,8 @@ interface MintAPI {
   onTrayStartRecording: (callback: () => void) => () => void
   onTrayStopRecording: (callback: () => void) => () => void
   updateTrayRecordingState: (isRecording: boolean) => void
+  openExternal: (url: string) => Promise<void>
+  openApp: (appPath: string) => Promise<string>
 }
 
 declare global {

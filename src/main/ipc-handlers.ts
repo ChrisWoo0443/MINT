@@ -1,12 +1,13 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, shell } from 'electron'
 import { AudioCaptureService } from './services/audio-capture'
 import { DeepgramService } from './services/deepgram'
-import { GeminiService } from './services/gemini'
+import { OpenAIService } from './services/openai'
 import { SupabaseService } from './services/supabase'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   const audioCaptureService = new AudioCaptureService()
-  const deepgramService = new DeepgramService()
+  const micDeepgramService = new DeepgramService()
+  const systemDeepgramService = new DeepgramService()
   const supabaseService = new SupabaseService(
     process.env.VITE_SUPABASE_URL || '',
     process.env.VITE_SUPABASE_ANON_KEY || ''
@@ -18,10 +19,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     'recording:start',
     async (
       _event,
-      args: { userId: string; title: string; accessToken: string }
+      args: { userId: string; title: string; accessToken: string; userName: string }
     ) => {
       try {
-        const { userId, title, accessToken } = args
+        const { userId, title, accessToken, userName } = args
 
         supabaseService.setAccessToken(accessToken)
 
@@ -29,7 +30,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
         const deepgramApiKey = process.env.DEEPGRAM_API_KEY || ''
 
-        await deepgramService.startStreaming(deepgramApiKey, async (result) => {
+        const handleTranscript = async (result: {
+          speaker: string | null
+          content: string
+          timestampStart: number
+          timestampEnd: number
+          isFinal: boolean
+        }): Promise<void> => {
           mainWindow.webContents.send('transcript:chunk', result)
 
           if (result.isFinal && currentMeetingId) {
@@ -45,12 +52,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
               console.error('Failed to insert transcript chunk:', insertError)
             }
           }
-        })
+        }
+
+        // Start mic transcription (always)
+        await micDeepgramService.startStreaming(deepgramApiKey, userName, handleTranscript)
+        console.log(`[MINT] Mic Deepgram stream started (speaker: "${userName}")`)
+
+        // Start system audio transcription (best-effort)
+        try {
+          await systemDeepgramService.startStreaming(
+            deepgramApiKey,
+            'Meeting Users',
+            handleTranscript
+          )
+          console.log('[MINT] System audio Deepgram stream started (speaker: "Meeting Users")')
+        } catch (systemError) {
+          console.warn('[MINT] System audio Deepgram stream unavailable:', systemError)
+        }
 
         mainWindow.webContents.send('recording:status', 'recording')
-        await audioCaptureService.startCapture(mainWindow, (chunk: Buffer) => {
-          deepgramService.sendAudio(chunk)
-        })
+        await audioCaptureService.startCapture(mainWindow)
       } catch (startError) {
         console.error('Failed to start recording:', startError)
         currentMeetingId = null
@@ -62,7 +83,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('recording:stop', async () => {
     audioCaptureService.stopCapture(mainWindow)
-    deepgramService.stopStreaming()
+    micDeepgramService.stopStreaming()
+    systemDeepgramService.stopStreaming()
 
     mainWindow.webContents.send('recording:status', 'processing')
 
@@ -80,17 +102,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       const fullTranscript = await supabaseService.getFullTranscript(meetingId)
 
       if (!fullTranscript.trim()) {
-        await supabaseService.updateMeetingStatus(
-          meetingId,
-          'completed',
-          new Date().toISOString()
-        )
+        await supabaseService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
         mainWindow.webContents.send('recording:status', 'stopped')
         return
       }
 
-      const geminiService = new GeminiService(process.env.GEMINI_API_KEY || '')
-      const { notes, rawResponse } = await geminiService.generateNotes(fullTranscript)
+      const openaiService = new OpenAIService(process.env.OPENAI_API_KEY || '')
+      const { notes, rawResponse } = await openaiService.generateNotes(fullTranscript)
 
       await supabaseService.saveNotes(
         meetingId,
@@ -100,11 +118,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         rawResponse
       )
 
-      await supabaseService.updateMeetingStatus(
-        meetingId,
-        'completed',
-        new Date().toISOString()
-      )
+      await supabaseService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
 
       mainWindow.webContents.send('recording:status', 'stopped')
     } catch (processingError) {
@@ -120,8 +134,19 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     }
   })
 
-  ipcMain.on('audio:chunk', (_event, chunk: Buffer) => {
-    audioCaptureService.handleAudioChunk(chunk)
+  let micChunkCount = 0
+  let systemChunkCount = 0
+
+  ipcMain.on('audio:chunk:mic', (_event, chunk: Buffer) => {
+    micChunkCount++
+    if (micChunkCount === 1) console.log('[MINT] Receiving mic audio chunks')
+    micDeepgramService.sendAudio(chunk)
+  })
+
+  ipcMain.on('audio:chunk:system', (_event, chunk: Buffer) => {
+    systemChunkCount++
+    if (systemChunkCount === 1) console.log('[MINT] Receiving system audio chunks')
+    systemDeepgramService.sendAudio(chunk)
   })
 
   ipcMain.handle('audio:getDevices', async () => {
@@ -129,7 +154,15 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     return []
   })
 
-  ipcMain.handle('audio:setDevice', async (_event, _deviceId: string) => {
+  ipcMain.handle('audio:setDevice', async () => {
     // Will be implemented in a future task
+  })
+
+  ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+    await shell.openExternal(url)
+  })
+
+  ipcMain.handle('shell:openApp', async (_event, appPath: string) => {
+    await shell.openPath(appPath)
   })
 }

@@ -10,6 +10,7 @@ interface StartRecordingArgs {
   userId: string
   title: string
   accessToken: string
+  userName: string
 }
 
 interface MintAPI {
@@ -19,6 +20,8 @@ interface MintAPI {
   onRecordingStatus: (callback: (status: string) => void) => () => void
   getAudioDevices: () => Promise<MediaDeviceInfo[]>
   setAudioDevice: (deviceId: string) => Promise<void>
+  openExternal: (url: string) => Promise<void>
+  openApp: (appPath: string) => Promise<string>
 }
 
 declare global {
