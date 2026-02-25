@@ -48,15 +48,7 @@ function AppContent(): React.JSX.Element {
     }
 
     if (view === 'settings') {
-      return (
-        <Settings
-          onRerunSetup={() => {
-            localStorage.removeItem('onboardingComplete')
-            localStorage.removeItem('blackholeDeviceId')
-            setOnboardingComplete(false)
-          }}
-        />
-      )
+      return <Settings />
     }
 
     return (
@@ -79,8 +71,7 @@ function AppContent(): React.JSX.Element {
               title: defaultTitle,
               accessToken: session.access_token,
               userName,
-              micDeviceId: localStorage.getItem('micDeviceId') || undefined,
-              blackholeDeviceId: localStorage.getItem('blackholeDeviceId') || ''
+              micDeviceId: localStorage.getItem('micDeviceId') || undefined
             })
             setView('recording')
           } catch (error) {

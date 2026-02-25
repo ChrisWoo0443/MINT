@@ -44,13 +44,17 @@ export class DeepgramService {
       const startTime = words.length > 0 ? words[0].start : 0
       const endTime = words.length > 0 ? words[words.length - 1].end : 0
 
-      this.onResult?.({
+      const result = {
         speaker: speakerLabel,
         content: alternative.transcript,
         timestampStart: startTime,
         timestampEnd: endTime,
         isFinal: data.is_final ?? false
-      })
+      }
+      console.log(
+        `[MINT] Transcript chunk — speaker: "${result.speaker}", final: ${result.isFinal}`
+      )
+      this.onResult?.(result)
     })
 
     this.connection.on(LiveTranscriptionEvents.Error, (error: unknown) => {

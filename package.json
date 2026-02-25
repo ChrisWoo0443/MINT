@@ -24,8 +24,9 @@
     "@deepgram/sdk": "^4.11.3",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "@google/generative-ai": "^0.24.1",
-    "@supabase/supabase-js": "^2.97.0"
+    "@supabase/supabase-js": "^2.97.0",
+    "audiotee": "^0.0.7",
+    "openai": "^6.25.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

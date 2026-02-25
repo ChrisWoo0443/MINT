@@ -1,33 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
-interface SettingsProps {
-  onRerunSetup: () => void
-}
-
-export function Settings({ onRerunSetup }: SettingsProps): React.JSX.Element {
+export function Settings(): React.JSX.Element {
   const { user, signOut } = useAuth()
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string>(
     () => localStorage.getItem('micDeviceId') || ''
   )
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
-  const [blackholeDetected, setBlackholeDetected] = useState(false)
 
   const loadDevices = useCallback(async (): Promise<void> => {
     const devices = await navigator.mediaDevices.enumerateDevices()
-    const audioInputs = devices.filter(
-      (d) => d.kind === 'audioinput' && !d.label.toLowerCase().includes('blackhole')
-    )
+    const audioInputs = devices.filter((d) => d.kind === 'audioinput')
     setAudioDevices(audioInputs)
     if (audioInputs.length > 0 && !selectedDevice) {
       setSelectedDevice(audioInputs[0].deviceId)
     }
-
-    const blackhole = devices.find(
-      (d) => d.kind === 'audioinput' && d.label.toLowerCase().includes('blackhole')
-    )
-    setBlackholeDetected(!!blackhole)
   }, [selectedDevice])
 
   useEffect(() => {
@@ -76,25 +64,6 @@ export function Settings({ onRerunSetup }: SettingsProps): React.JSX.Element {
             </option>
           ))}
         </select>
-
-        <label style={{ marginTop: 16 }}>System Audio</label>
-        <p>
-          <span
-            style={{
-              display: 'inline-block',
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: blackholeDetected
-                ? 'var(--color-status-completed)'
-                : 'var(--color-status-failed)',
-              marginRight: 8
-            }}
-          />
-          {blackholeDetected ? 'BlackHole 2ch detected' : 'BlackHole not detected'}
-        </p>
-
-        <button onClick={onRerunSetup}>Re-run audio setup</button>
       </section>
 
       <section>

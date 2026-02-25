@@ -15,7 +15,6 @@ interface StartRecordingArgs {
   accessToken: string
   userName: string
   micDeviceId?: string
-  blackholeDeviceId?: string
 }
 
 interface MintAPI {
@@ -148,14 +147,10 @@ function createAudioPipeline(
   return processor
 }
 
-async function startAudioCapture(deviceConfig: {
-  micDeviceId: string
-  blackholeDeviceId: string
-}): Promise<void> {
+async function startAudioCapture(deviceConfig: { micDeviceId: string }): Promise<void> {
   try {
     activeAudioContext = new AudioContext()
 
-    // Capture microphone
     const micConstraints: MediaStreamConstraints = {
       audio:
         deviceConfig.micDeviceId && deviceConfig.micDeviceId !== 'default'
@@ -166,22 +161,6 @@ async function startAudioCapture(deviceConfig: {
     activeStreams.push(micStream)
     const micSource = activeAudioContext.createMediaStreamSource(micStream)
     activeProcessors.push(createAudioPipeline(micSource, activeAudioContext, 'audio:chunk:mic'))
-
-    // Capture system audio via BlackHole
-    if (deviceConfig.blackholeDeviceId) {
-      try {
-        const blackholeStream = await navigator.mediaDevices.getUserMedia({
-          audio: { deviceId: { exact: deviceConfig.blackholeDeviceId } }
-        })
-        activeStreams.push(blackholeStream)
-        const systemSource = activeAudioContext.createMediaStreamSource(blackholeStream)
-        activeProcessors.push(
-          createAudioPipeline(systemSource, activeAudioContext, 'audio:chunk:system')
-        )
-      } catch (blackholeError) {
-        console.warn('BlackHole audio capture unavailable:', blackholeError)
-      }
-    }
   } catch (captureError) {
     console.error('Failed to start audio capture:', captureError)
   }
@@ -207,12 +186,9 @@ function stopAudioCapture(): void {
   activeStreams = []
 }
 
-ipcRenderer.on(
-  'audio:startCapture',
-  (_event, deviceConfig: { micDeviceId: string; blackholeDeviceId: string }) => {
-    startAudioCapture(deviceConfig)
-  }
-)
+ipcRenderer.on('audio:startCapture', (_event, deviceConfig: { micDeviceId: string }) => {
+  startAudioCapture(deviceConfig)
+})
 
 ipcRenderer.on('audio:stopCapture', () => {
   stopAudioCapture()

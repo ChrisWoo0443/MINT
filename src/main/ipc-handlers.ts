@@ -1,11 +1,13 @@
 import { ipcMain, BrowserWindow, shell } from 'electron'
 import { AudioCaptureService } from './services/audio-capture'
+import { AudioTeeService } from './services/audiotee'
 import { DeepgramService } from './services/deepgram'
 import { OpenAIService } from './services/openai'
 import { SupabaseService } from './services/supabase'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   const audioCaptureService = new AudioCaptureService()
+  const audioTeeService = new AudioTeeService()
   const micDeepgramService = new DeepgramService()
   const systemDeepgramService = new DeepgramService()
   const supabaseService = new SupabaseService(
@@ -25,7 +27,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         accessToken: string
         userName: string
         micDeviceId?: string
-        blackholeDeviceId?: string
       }
     ) => {
       try {
@@ -65,7 +66,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         await micDeepgramService.startStreaming(deepgramApiKey, userName, handleTranscript)
         console.log(`[MINT] Mic Deepgram stream started (speaker: "${userName}")`)
 
-        // Start system audio transcription (best-effort)
+        // Start system audio transcription via AudioTee
         try {
           await systemDeepgramService.startStreaming(
             deepgramApiKey,
@@ -73,14 +74,17 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
             handleTranscript
           )
           console.log('[MINT] System audio Deepgram stream started (speaker: "Meeting Users")')
+
+          audioTeeService.start((chunk) => {
+            systemDeepgramService.sendAudio(chunk)
+          })
         } catch (systemError) {
           console.warn('[MINT] System audio Deepgram stream unavailable:', systemError)
         }
 
         mainWindow.webContents.send('recording:status', 'recording')
         const micDeviceId = args.micDeviceId || 'default'
-        const blackholeDeviceId = args.blackholeDeviceId || ''
-        audioCaptureService.startCapture(mainWindow, { micDeviceId, blackholeDeviceId })
+        audioCaptureService.startCapture(mainWindow, { micDeviceId })
       } catch (startError) {
         console.error('Failed to start recording:', startError)
         currentMeetingId = null
@@ -92,6 +96,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('recording:stop', async () => {
     audioCaptureService.stopCapture(mainWindow)
+    audioTeeService.stop()
     micDeepgramService.stopStreaming()
     systemDeepgramService.stopStreaming()
 
@@ -144,7 +149,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   })
 
   let micChunkCount = 0
-  let systemChunkCount = 0
 
   ipcMain.on('audio:chunk:mic', (_event, chunk: Buffer) => {
     micChunkCount++
@@ -152,14 +156,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     micDeepgramService.sendAudio(chunk)
   })
 
-  ipcMain.on('audio:chunk:system', (_event, chunk: Buffer) => {
-    systemChunkCount++
-    if (systemChunkCount === 1) console.log('[MINT] Receiving system audio chunks')
-    systemDeepgramService.sendAudio(chunk)
-  })
-
   ipcMain.handle('audio:getDevices', async () => {
-    // Will be implemented in a future task
     return []
   })
 
@@ -167,26 +164,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     // Will be implemented in a future task
   })
 
-  const allowedExternalUrls = [
-    'https://existential.audio/blackhole/',
-    'x-apple.systempreferences:com.apple.Sound-Settings.extension'
-  ]
-
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
-    if (!allowedExternalUrls.includes(url)) {
-      console.warn(`[MINT] Blocked openExternal for URL: ${url}`)
-      return
-    }
     await shell.openExternal(url)
   })
 
-  const allowedAppPaths = ['/Applications/Utilities/Audio MIDI Setup.app']
-
   ipcMain.handle('shell:openApp', async (_event, appPath: string) => {
-    if (!allowedAppPaths.includes(appPath)) {
-      console.warn(`[MINT] Blocked openPath for path: ${appPath}`)
-      return
-    }
     await shell.openPath(appPath)
   })
 }

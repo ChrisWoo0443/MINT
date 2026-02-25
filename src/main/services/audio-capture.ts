@@ -2,7 +2,6 @@ import { BrowserWindow } from 'electron'
 
 export interface AudioDeviceConfig {
   micDeviceId: string
-  blackholeDeviceId: string
 }
 
 export class AudioCaptureService {
