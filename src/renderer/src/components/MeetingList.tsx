@@ -79,6 +79,7 @@ export function MeetingList({
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [dragOverSection, setDragOverSection] = useState<string | null>(null)
+  const hasDeepgramKey = Boolean(localStorage.getItem('deepgramApiKey'))
 
   const loadData = useCallback(async (): Promise<void> => {
     const [meetingsData, tagsData] = await Promise.all([
@@ -276,7 +277,13 @@ export function MeetingList({
           <button className="add-section-button" onClick={addCustomSection} title="New section">
             +
           </button>
-          <button onClick={onStartRecording}>Start Recording</button>
+          <button
+            onClick={onStartRecording}
+            disabled={!hasDeepgramKey}
+            title={hasDeepgramKey ? undefined : 'Set a Deepgram API key in Settings'}
+          >
+            Start Recording
+          </button>
         </div>
       </div>
       {meetings.length === 0 ? (
