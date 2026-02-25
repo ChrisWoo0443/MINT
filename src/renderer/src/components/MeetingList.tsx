@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MeetingCard } from './MeetingCard'
 
 interface TagDefinition {
@@ -79,6 +79,7 @@ export function MeetingList({
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [dragOverSection, setDragOverSection] = useState<string | null>(null)
+  const dragCounter = useRef(0)
   const hasDeepgramKey = Boolean(localStorage.getItem('deepgramApiKey'))
 
   const loadData = useCallback(async (): Promise<void> => {
@@ -223,18 +224,28 @@ export function MeetingList({
     })
   }
 
-  const handleSectionDragOver = (e: React.DragEvent, sectionId: string): void => {
+  const handleSectionDragEnter = (e: React.DragEvent, sectionId: string): void => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
+    dragCounter.current++
     setDragOverSection(sectionId)
   }
 
+  const handleSectionDragOver = (e: React.DragEvent): void => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
   const handleSectionDragLeave = (): void => {
-    setDragOverSection(null)
+    dragCounter.current--
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0
+      setDragOverSection(null)
+    }
   }
 
   const handleSectionDrop = (e: React.DragEvent, sectionId: string, isCustom: boolean): void => {
     e.preventDefault()
+    dragCounter.current = 0
     setDragOverSection(null)
     const meetingId = e.dataTransfer.getData('text/plain')
     if (!meetingId) return
@@ -242,7 +253,6 @@ export function MeetingList({
     if (isCustom) {
       moveMeeting(meetingId, sectionId)
     } else {
-      // Dropping on a date section removes the custom assignment
       moveMeeting(meetingId, null)
     }
   }
@@ -297,7 +307,8 @@ export function MeetingList({
             <div key={section} className="meeting-section">
               <div
                 className={`meeting-section-header ${isDragOver ? 'drag-over' : ''}`}
-                onDragOver={(e) => handleSectionDragOver(e, section)}
+                onDragEnter={(e) => handleSectionDragEnter(e, section)}
+                onDragOver={handleSectionDragOver}
                 onDragLeave={handleSectionDragLeave}
                 onDrop={(e) => handleSectionDrop(e, section, isCustom)}
               >

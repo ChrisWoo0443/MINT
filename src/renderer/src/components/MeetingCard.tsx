@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { TagPicker } from './TagPicker'
 
 interface TagDefinition {
@@ -38,6 +39,8 @@ export function MeetingCard({
   const meetingTags = meeting.tags ?? []
   const assignedTags = availableTags.filter((t) => meetingTags.includes(t.id))
 
+  const didDrag = useRef(false)
+
   const handleDelete = (e: React.MouseEvent): void => {
     e.stopPropagation()
     if (window.confirm('Delete this meeting? This cannot be undone.')) {
@@ -46,26 +49,34 @@ export function MeetingCard({
   }
 
   const handleDragStart = (e: React.DragEvent): void => {
+    didDrag.current = true
     e.dataTransfer.setData('text/plain', meeting.id)
     e.dataTransfer.effectAllowed = 'move'
-    ;(e.currentTarget as HTMLElement).classList.add('dragging')
+    const card = (e.currentTarget as HTMLElement).closest('.meeting-card') as HTMLElement
+    card?.classList.add('dragging')
   }
 
   const handleDragEnd = (e: React.DragEvent): void => {
-    ;(e.currentTarget as HTMLElement).classList.remove('dragging')
+    const card = (e.currentTarget as HTMLElement).closest('.meeting-card') as HTMLElement
+    card?.classList.remove('dragging')
+    // Reset after a tick so the click handler can check it
+    requestAnimationFrame(() => {
+      didDrag.current = false
+    })
+  }
+
+  const handleClick = (): void => {
+    if (didDrag.current) return
+    onClick()
   }
 
   return (
-    <div
-      className="meeting-card"
-      onClick={onClick}
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <div className="meeting-card" onClick={handleClick}>
       <div
         className="drag-handle"
-        onMouseDown={(e) => e.stopPropagation()}
+        draggable
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         title="Drag to move"
       >
         <span className="drag-dots" />
