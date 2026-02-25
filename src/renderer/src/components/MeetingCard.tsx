@@ -48,18 +48,24 @@ export function MeetingCard({
     }
   }
 
+  const cardRef = useRef<HTMLDivElement>(null)
+
   const handleDragStart = (e: React.DragEvent): void => {
     didDrag.current = true
     e.dataTransfer.setData('text/plain', meeting.id)
     e.dataTransfer.effectAllowed = 'move'
-    const card = (e.currentTarget as HTMLElement).closest('.meeting-card') as HTMLElement
-    card?.classList.add('dragging')
+    // Use the full card as the drag ghost
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect()
+      const offsetX = e.clientX - rect.left
+      const offsetY = e.clientY - rect.top
+      e.dataTransfer.setDragImage(cardRef.current, offsetX, offsetY)
+      cardRef.current.classList.add('dragging')
+    }
   }
 
-  const handleDragEnd = (e: React.DragEvent): void => {
-    const card = (e.currentTarget as HTMLElement).closest('.meeting-card') as HTMLElement
-    card?.classList.remove('dragging')
-    // Reset after a tick so the click handler can check it
+  const handleDragEnd = (): void => {
+    cardRef.current?.classList.remove('dragging')
     requestAnimationFrame(() => {
       didDrag.current = false
     })
@@ -71,7 +77,7 @@ export function MeetingCard({
   }
 
   return (
-    <div className="meeting-card" onClick={handleClick}>
+    <div className="meeting-card" ref={cardRef} onClick={handleClick}>
       <div
         className="drag-handle"
         draggable

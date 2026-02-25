@@ -304,14 +304,15 @@ export function MeetingList({
           const isDragOver = dragOverSection === section
 
           return (
-            <div key={section} className="meeting-section">
-              <div
-                className={`meeting-section-header ${isDragOver ? 'drag-over' : ''}`}
-                onDragEnter={(e) => handleSectionDragEnter(e, section)}
-                onDragOver={handleSectionDragOver}
-                onDragLeave={handleSectionDragLeave}
-                onDrop={(e) => handleSectionDrop(e, section, isCustom)}
-              >
+            <div
+              key={section}
+              className={`meeting-section ${isDragOver ? 'drag-over' : ''}`}
+              onDragEnter={(e) => handleSectionDragEnter(e, section)}
+              onDragOver={handleSectionDragOver}
+              onDragLeave={handleSectionDragLeave}
+              onDrop={(e) => handleSectionDrop(e, section, isCustom)}
+            >
+              <div className="meeting-section-header">
                 <button
                   className="meeting-section-toggle"
                   onClick={() => toggleCollapse(section)}
