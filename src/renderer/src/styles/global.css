@@ -983,3 +983,123 @@ label {
 .danger-button:hover {
   background: var(--color-danger-hover) !important;
 }
+
+/* ============================================================
+   TAGS
+   ============================================================ */
+
+/* ----- Tag Dots ----- */
+.tag-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-dot-large {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.meeting-card-tags {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.detail-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* ----- Tag Picker ----- */
+.tag-picker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tag-picker-button {
+  background: transparent;
+  color: var(--color-text-tertiary);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.tag-picker-button:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.tag-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  margin-top: 4px;
+  min-width: 160px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.tag-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.tag-picker-option:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.tag-picker-option.selected {
+  color: var(--color-text-primary);
+}
+
+.tag-option-name {
+  flex: 1;
+}
+
+.tag-check {
+  font-size: 12px;
+  color: var(--color-accent);
+}
+
+/* ----- Settings Tags ----- */
+.tags-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tag-setting-row input {
+  flex: 1;
+}
