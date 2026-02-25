@@ -16,6 +16,11 @@ interface Meeting {
   tags?: string[]
 }
 
+interface CustomSection {
+  id: string
+  name: string
+}
+
 interface MeetingListProps {
   onSelectMeeting: (meetingId: string) => void
   onStartRecording: () => void
@@ -38,22 +43,19 @@ function getDateSection(dateStr: string): string {
   return 'Older'
 }
 
-const SECTION_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+const DATE_SECTION_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
 
-function loadSectionNames(): Record<string, string> {
+function loadJson<T>(key: string, fallback: T): T {
   try {
-    return JSON.parse(localStorage.getItem('sectionNames') || '{}')
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
   } catch {
-    return {}
+    return fallback
   }
 }
 
-function loadCollapsedSections(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem('collapsedSections') || '{}')
-  } catch {
-    return {}
-  }
+function saveJson(key: string, value: unknown): void {
+  localStorage.setItem(key, JSON.stringify(value))
 }
 
 export function MeetingList({
@@ -62,8 +64,18 @@ export function MeetingList({
 }: MeetingListProps): React.JSX.Element {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [availableTags, setAvailableTags] = useState<TagDefinition[]>([])
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(loadCollapsedSections)
-  const [sectionNames, setSectionNames] = useState<Record<string, string>>(loadSectionNames)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
+    () => loadJson('collapsedSections', {})
+  )
+  const [sectionNames, setSectionNames] = useState<Record<string, string>>(
+    () => loadJson('sectionNames', {})
+  )
+  const [customSections, setCustomSections] = useState<CustomSection[]>(
+    () => loadJson('customSections', [])
+  )
+  const [sectionAssignments, setSectionAssignments] = useState<Record<string, string>>(
+    () => loadJson('sectionAssignments', {})
+  )
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
@@ -81,51 +93,147 @@ export function MeetingList({
     loadData()
   }, [loadData])
 
-  const groupedMeetings = useMemo(() => {
-    const groups = new Map<string, Meeting[]>()
-    for (const meeting of meetings) {
-      const section = getDateSection(meeting.startedAt)
-      const list = groups.get(section) || []
-      list.push(meeting)
-      groups.set(section, list)
+  const { customGroups, dateGroups } = useMemo(() => {
+    const assignedMeetingIds = new Set(Object.keys(sectionAssignments))
+
+    // Custom section groups
+    const customMap = new Map<string, Meeting[]>()
+    for (const section of customSections) {
+      customMap.set(section.id, [])
     }
-    return SECTION_ORDER
-      .filter((section) => groups.has(section))
-      .map((section) => ({ section, meetings: groups.get(section)! }))
-  }, [meetings])
+    for (const meeting of meetings) {
+      const sectionId = sectionAssignments[meeting.id]
+      if (sectionId && customMap.has(sectionId)) {
+        customMap.get(sectionId)!.push(meeting)
+      }
+    }
+    const customResult = customSections.map((section) => ({
+      section: section.id,
+      name: section.name,
+      isCustom: true as const,
+      meetings: customMap.get(section.id) || []
+    }))
+
+    // Date section groups (only unassigned meetings)
+    const dateMap = new Map<string, Meeting[]>()
+    for (const meeting of meetings) {
+      if (assignedMeetingIds.has(meeting.id)) continue
+      const section = getDateSection(meeting.startedAt)
+      const list = dateMap.get(section) || []
+      list.push(meeting)
+      dateMap.set(section, list)
+    }
+    const dateResult = DATE_SECTION_ORDER
+      .filter((section) => dateMap.has(section))
+      .map((section) => ({
+        section,
+        name: sectionNames[section] || section,
+        isCustom: false as const,
+        meetings: dateMap.get(section)!
+      }))
+
+    return { customGroups: customResult, dateGroups: dateResult }
+  }, [meetings, customSections, sectionAssignments, sectionNames])
+
+  const allGroups = useMemo(
+    () => [...customGroups, ...dateGroups],
+    [customGroups, dateGroups]
+  )
 
   const toggleCollapse = (section: string): void => {
     setCollapsed((prev) => {
       const next = { ...prev, [section]: !prev[section] }
-      localStorage.setItem('collapsedSections', JSON.stringify(next))
+      saveJson('collapsedSections', next)
       return next
     })
   }
 
-  const startRename = (section: string): void => {
+  const startRename = (section: string, currentName: string): void => {
     setEditingSection(section)
-    setEditValue(sectionNames[section] || section)
+    setEditValue(currentName)
   }
 
   const commitRename = (): void => {
     if (!editingSection) return
     const trimmed = editValue.trim()
-    setSectionNames((prev) => {
-      const next = { ...prev }
-      if (!trimmed || trimmed === editingSection) {
-        delete next[editingSection]
-      } else {
-        next[editingSection] = trimmed
+
+    // Check if it's a custom section
+    const customSection = customSections.find((s) => s.id === editingSection)
+    if (customSection) {
+      if (trimmed) {
+        setCustomSections((prev) => {
+          const next = prev.map((s) => (s.id === editingSection ? { ...s, name: trimmed } : s))
+          saveJson('customSections', next)
+          return next
+        })
       }
-      localStorage.setItem('sectionNames', JSON.stringify(next))
+    } else {
+      // Date section rename
+      setSectionNames((prev) => {
+        const next = { ...prev }
+        if (!trimmed || trimmed === editingSection) {
+          delete next[editingSection]
+        } else {
+          next[editingSection] = trimmed
+        }
+        saveJson('sectionNames', next)
+        return next
+      })
+    }
+    setEditingSection(null)
+  }
+
+  const addCustomSection = (): void => {
+    const newSection: CustomSection = {
+      id: `section-${Date.now()}`,
+      name: 'New Section'
+    }
+    setCustomSections((prev) => {
+      const next = [...prev, newSection]
+      saveJson('customSections', next)
       return next
     })
-    setEditingSection(null)
+    startRename(newSection.id, newSection.name)
+  }
+
+  const deleteCustomSection = (sectionId: string): void => {
+    setCustomSections((prev) => {
+      const next = prev.filter((s) => s.id !== sectionId)
+      saveJson('customSections', next)
+      return next
+    })
+    setSectionAssignments((prev) => {
+      const next = { ...prev }
+      for (const [meetingId, assignedSection] of Object.entries(next)) {
+        if (assignedSection === sectionId) delete next[meetingId]
+      }
+      saveJson('sectionAssignments', next)
+      return next
+    })
+  }
+
+  const moveMeeting = (meetingId: string, targetSectionId: string | null): void => {
+    setSectionAssignments((prev) => {
+      const next = { ...prev }
+      if (targetSectionId === null) {
+        delete next[meetingId]
+      } else {
+        next[meetingId] = targetSectionId
+      }
+      saveJson('sectionAssignments', next)
+      return next
+    })
   }
 
   const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
     await window.mintAPI.deleteMeeting(meetingId)
     setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
+    setSectionAssignments((prev) => {
+      const next = { ...prev }
+      delete next[meetingId]
+      saveJson('sectionAssignments', next)
+      return next
+    })
   }
 
   const handleToggleTag = async (meetingId: string, tagId: string): Promise<void> => {
@@ -139,18 +247,24 @@ export function MeetingList({
     setMeetings((prev) => prev.map((m) => (m.id === meetingId ? { ...m, tags: newTags } : m)))
   }
 
+  const moveTargets = customSections.map((s) => ({ id: s.id, name: s.name }))
+
   return (
     <div className="meeting-list">
       <div className="meeting-list-header">
         <h2>Meetings</h2>
-        <button onClick={onStartRecording}>Start Recording</button>
+        <div className="meeting-list-actions">
+          <button className="add-section-button" onClick={addCustomSection} title="New section">
+            +
+          </button>
+          <button onClick={onStartRecording}>Start Recording</button>
+        </div>
       </div>
       {meetings.length === 0 ? (
         <p>No meetings yet. Start your first recording.</p>
       ) : (
-        groupedMeetings.map(({ section, meetings: sectionMeetings }) => {
+        allGroups.map(({ section, name, isCustom, meetings: sectionMeetings }) => {
           const isCollapsed = collapsed[section] ?? false
-          const displayName = sectionNames[section] || section
 
           return (
             <div key={section} className="meeting-section">
@@ -177,13 +291,22 @@ export function MeetingList({
                 ) : (
                   <span
                     className="meeting-section-label"
-                    onDoubleClick={() => startRename(section)}
+                    onDoubleClick={() => startRename(section, name)}
                     title="Double-click to rename"
                   >
-                    {displayName}
+                    {name}
                   </span>
                 )}
                 <span className="meeting-section-count">{sectionMeetings.length}</span>
+                {isCustom && (
+                  <button
+                    className="section-delete-button"
+                    onClick={() => deleteCustomSection(section)}
+                    title="Delete section"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
               {!isCollapsed &&
                 sectionMeetings.map((meeting) => (
@@ -194,6 +317,9 @@ export function MeetingList({
                     onClick={() => onSelectMeeting(meeting.id)}
                     onDelete={handleDeleteMeeting}
                     onToggleTag={handleToggleTag}
+                    moveTargets={moveTargets}
+                    currentSection={isCustom ? section : null}
+                    onMove={moveMeeting}
                   />
                 ))}
             </div>

@@ -344,8 +344,28 @@ label {
   margin: 0;
 }
 
+.meeting-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .meeting-list-header button {
   font-weight: 600;
+}
+
+.add-section-button {
+  background: var(--color-bg-elevated) !important;
+  color: var(--color-text-secondary) !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  padding: 6px 12px !important;
+  line-height: 1;
+}
+
+.add-section-button:hover {
+  background: var(--color-bg-hover) !important;
+  color: var(--color-text-primary) !important;
 }
 
 .meeting-list > p {
@@ -434,6 +454,26 @@ label {
   border-radius: 999px;
 }
 
+.section-delete-button {
+  background: transparent;
+  color: var(--color-text-tertiary);
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.meeting-section-header:hover .section-delete-button {
+  opacity: 1;
+}
+
+.section-delete-button:hover {
+  color: var(--color-danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* ============================================================
    MEETING CARD
    ============================================================ */
@@ -492,6 +532,61 @@ label {
   font-size: 12px;
   color: var(--color-text-tertiary);
   white-space: nowrap;
+}
+
+/* ----- Move Picker ----- */
+.move-picker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.move-picker-button {
+  background: transparent;
+  color: var(--color-text-tertiary);
+  padding: 4px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.move-picker-button:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+.move-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  margin-top: 4px;
+  min-width: 160px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.move-picker-option {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.move-picker-option:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
 }
 
 /* ----- Delete Button ----- */
