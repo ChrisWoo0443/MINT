@@ -9,11 +9,30 @@ interface TranscriptChunk {
 }
 
 interface StartRecordingArgs {
-  userId: string
   title: string
-  accessToken: string
   userName: string
   micDeviceId?: string
+}
+
+interface MeetingMetadata {
+  id: string
+  title: string
+  status: string
+  startedAt: string
+  endedAt: string | null
+}
+
+interface NoteData {
+  summary: string
+  decisions: string[]
+  actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
+}
+
+interface TranscriptEntryData {
+  speaker: string | null
+  content: string
+  timestampStart: number
+  timestampEnd: number
 }
 
 interface MintAPI {
@@ -28,6 +47,16 @@ interface MintAPI {
   updateTrayRecordingState: (isRecording: boolean) => void
   openExternal: (url: string) => Promise<void>
   openApp: (appPath: string) => Promise<string>
+  listOllamaModels: (url: string) => Promise<string[] | null>
+  listMeetings: () => Promise<MeetingMetadata[]>
+  getMeeting: (meetingId: string) => Promise<MeetingMetadata>
+  deleteMeeting: (meetingId: string) => Promise<void>
+  renameMeeting: (meetingId: string, newTitle: string) => Promise<void>
+  getMeetingNotes: (meetingId: string) => Promise<NoteData | null>
+  getMeetingTranscripts: (meetingId: string) => Promise<TranscriptEntryData[]>
+  getStoragePath: () => Promise<string>
+  setStoragePath: (newPath: string) => Promise<void>
+  pickStorageFolder: () => Promise<string | null>
 }
 
 declare global {

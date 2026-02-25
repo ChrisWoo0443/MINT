@@ -10,11 +10,30 @@ interface TranscriptChunk {
 }
 
 interface StartRecordingArgs {
-  userId: string
   title: string
-  accessToken: string
   userName: string
   micDeviceId?: string
+}
+
+interface MeetingMetadata {
+  id: string
+  title: string
+  status: string
+  startedAt: string
+  endedAt: string | null
+}
+
+interface NoteData {
+  summary: string
+  decisions: string[]
+  actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
+}
+
+interface TranscriptEntryData {
+  speaker: string | null
+  content: string
+  timestampStart: number
+  timestampEnd: number
 }
 
 interface MintAPI {
@@ -29,6 +48,16 @@ interface MintAPI {
   updateTrayRecordingState: (isRecording: boolean) => void
   openExternal: (url: string) => Promise<void>
   openApp: (appPath: string) => Promise<string>
+  listOllamaModels: (url: string) => Promise<string[] | null>
+  listMeetings: () => Promise<MeetingMetadata[]>
+  getMeeting: (meetingId: string) => Promise<MeetingMetadata>
+  deleteMeeting: (meetingId: string) => Promise<void>
+  renameMeeting: (meetingId: string, newTitle: string) => Promise<void>
+  getMeetingNotes: (meetingId: string) => Promise<NoteData | null>
+  getMeetingTranscripts: (meetingId: string) => Promise<TranscriptEntryData[]>
+  getStoragePath: () => Promise<string>
+  setStoragePath: (newPath: string) => Promise<void>
+  pickStorageFolder: () => Promise<string | null>
 }
 
 const mintAPI: MintAPI = {
@@ -83,7 +112,20 @@ const mintAPI: MintAPI = {
   },
 
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
-  openApp: (appPath: string) => ipcRenderer.invoke('shell:openApp', appPath)
+  openApp: (appPath: string) => ipcRenderer.invoke('shell:openApp', appPath),
+  listOllamaModels: (url: string) => ipcRenderer.invoke('ollama:listModels', url),
+
+  listMeetings: () => ipcRenderer.invoke('meetings:list'),
+  getMeeting: (meetingId: string) => ipcRenderer.invoke('meetings:get', meetingId),
+  deleteMeeting: (meetingId: string) => ipcRenderer.invoke('meetings:delete', meetingId),
+  renameMeeting: (meetingId: string, newTitle: string) =>
+    ipcRenderer.invoke('meetings:rename', meetingId, newTitle),
+  getMeetingNotes: (meetingId: string) => ipcRenderer.invoke('meetings:getNotes', meetingId),
+  getMeetingTranscripts: (meetingId: string) =>
+    ipcRenderer.invoke('meetings:getTranscripts', meetingId),
+  getStoragePath: () => ipcRenderer.invoke('storage:getPath'),
+  setStoragePath: (newPath: string) => ipcRenderer.invoke('storage:setPath', newPath),
+  pickStorageFolder: () => ipcRenderer.invoke('storage:pickFolder')
 }
 
 // --- Audio capture (renderer-side for macOS BlackHole + microphone) ---
