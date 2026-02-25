@@ -40,12 +40,32 @@ function getDateSection(dateStr: string): string {
 
 const SECTION_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
 
+function loadSectionNames(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem('sectionNames') || '{}')
+  } catch {
+    return {}
+  }
+}
+
+function loadCollapsedSections(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem('collapsedSections') || '{}')
+  } catch {
+    return {}
+  }
+}
+
 export function MeetingList({
   onSelectMeeting,
   onStartRecording
 }: MeetingListProps): React.JSX.Element {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [availableTags, setAvailableTags] = useState<TagDefinition[]>([])
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(loadCollapsedSections)
+  const [sectionNames, setSectionNames] = useState<Record<string, string>>(loadSectionNames)
+  const [editingSection, setEditingSection] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   const loadData = useCallback(async (): Promise<void> => {
     const [meetingsData, tagsData] = await Promise.all([
@@ -74,6 +94,35 @@ export function MeetingList({
       .map((section) => ({ section, meetings: groups.get(section)! }))
   }, [meetings])
 
+  const toggleCollapse = (section: string): void => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [section]: !prev[section] }
+      localStorage.setItem('collapsedSections', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const startRename = (section: string): void => {
+    setEditingSection(section)
+    setEditValue(sectionNames[section] || section)
+  }
+
+  const commitRename = (): void => {
+    if (!editingSection) return
+    const trimmed = editValue.trim()
+    setSectionNames((prev) => {
+      const next = { ...prev }
+      if (!trimmed || trimmed === editingSection) {
+        delete next[editingSection]
+      } else {
+        next[editingSection] = trimmed
+      }
+      localStorage.setItem('sectionNames', JSON.stringify(next))
+      return next
+    })
+    setEditingSection(null)
+  }
+
   const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
     await window.mintAPI.deleteMeeting(meetingId)
     setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
@@ -99,24 +148,57 @@ export function MeetingList({
       {meetings.length === 0 ? (
         <p>No meetings yet. Start your first recording.</p>
       ) : (
-        groupedMeetings.map(({ section, meetings: sectionMeetings }) => (
-          <div key={section} className="meeting-section">
-            <div className="meeting-section-header">
-              <span className="meeting-section-label">{section}</span>
-              <span className="meeting-section-count">{sectionMeetings.length}</span>
+        groupedMeetings.map(({ section, meetings: sectionMeetings }) => {
+          const isCollapsed = collapsed[section] ?? false
+          const displayName = sectionNames[section] || section
+
+          return (
+            <div key={section} className="meeting-section">
+              <div className="meeting-section-header">
+                <button
+                  className="meeting-section-toggle"
+                  onClick={() => toggleCollapse(section)}
+                  aria-expanded={!isCollapsed}
+                >
+                  <span className={`section-chevron ${isCollapsed ? 'collapsed' : ''}`} />
+                </button>
+                {editingSection === section ? (
+                  <input
+                    className="section-rename-input"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={commitRename}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitRename()
+                      if (e.key === 'Escape') setEditingSection(null)
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    className="meeting-section-label"
+                    onDoubleClick={() => startRename(section)}
+                    title="Double-click to rename"
+                  >
+                    {displayName}
+                  </span>
+                )}
+                <span className="meeting-section-count">{sectionMeetings.length}</span>
+              </div>
+              {!isCollapsed &&
+                sectionMeetings.map((meeting) => (
+                  <MeetingCard
+                    key={meeting.id}
+                    meeting={meeting}
+                    availableTags={availableTags}
+                    onClick={() => onSelectMeeting(meeting.id)}
+                    onDelete={handleDeleteMeeting}
+                    onToggleTag={handleToggleTag}
+                  />
+                ))}
             </div>
-            {sectionMeetings.map((meeting) => (
-              <MeetingCard
-                key={meeting.id}
-                meeting={meeting}
-                availableTags={availableTags}
-                onClick={() => onSelectMeeting(meeting.id)}
-                onDelete={handleDeleteMeeting}
-                onToggleTag={handleToggleTag}
-              />
-            ))}
-          </div>
-        ))
+          )
+        })
       )}
     </div>
   )

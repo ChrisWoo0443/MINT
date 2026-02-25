@@ -362,9 +362,39 @@ label {
 .meeting-section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 8px;
   padding: 0 2px;
+}
+
+.meeting-section-toggle {
+  background: transparent;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.meeting-section-toggle:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.section-chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid currentColor;
+  transition: transform var(--transition-fast);
+}
+
+.section-chevron.collapsed {
+  transform: rotate(-90deg);
 }
 
 .meeting-section-label {
@@ -373,6 +403,27 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-tertiary);
+  cursor: default;
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+}
+
+.meeting-section-label:hover {
+  background: var(--color-bg-hover);
+}
+
+.section-rename-input {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  outline: none;
+  width: 140px;
 }
 
 .meeting-section-count {
