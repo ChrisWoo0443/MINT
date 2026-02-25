@@ -6,16 +6,36 @@ export interface MeetingNotes {
   actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
 }
 
+interface NotesServiceOptions {
+  provider: 'openai' | 'ollama'
+  apiKey?: string
+  ollamaUrl?: string
+  ollamaModel?: string
+}
+
 export class OpenAIService {
   private client: OpenAI
+  private model: string
 
-  constructor(apiKey: string) {
-    this.client = new OpenAI({ apiKey })
+  constructor(apiKeyOrOptions: string | NotesServiceOptions) {
+    if (typeof apiKeyOrOptions === 'string') {
+      this.client = new OpenAI({ apiKey: apiKeyOrOptions })
+      this.model = 'gpt-4o'
+    } else if (apiKeyOrOptions.provider === 'ollama') {
+      const baseURL = `${apiKeyOrOptions.ollamaUrl || 'http://localhost:11434'}/v1`
+      this.client = new OpenAI({ baseURL, apiKey: 'ollama' })
+      this.model = apiKeyOrOptions.ollamaModel || 'llama3.2:latest'
+    } else {
+      this.client = new OpenAI({ apiKey: apiKeyOrOptions.apiKey })
+      this.model = 'gpt-4o'
+    }
   }
 
   async generateNotes(transcript: string): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
+    const useJsonFormat = this.model === 'gpt-4o'
+
     const response = await this.client.chat.completions.create({
-      model: 'gpt-4o',
+      model: this.model,
       messages: [
         {
           role: 'system',
@@ -40,11 +60,12 @@ Rules:
           content: transcript
         }
       ],
-      response_format: { type: 'json_object' }
+      ...(useJsonFormat ? { response_format: { type: 'json_object' as const } } : {})
     })
 
     const responseText = response.choices[0].message.content || '{}'
-    const parsed = JSON.parse(responseText) as MeetingNotes
+    const cleaned = responseText.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '')
+    const parsed = JSON.parse(cleaned) as MeetingNotes
 
     return {
       notes: parsed,

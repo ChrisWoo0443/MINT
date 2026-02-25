@@ -973,3 +973,13 @@ label {
 .storage-picker button {
   white-space: nowrap;
 }
+
+.danger-button {
+  background: var(--color-danger) !important;
+  color: #fff !important;
+  margin-top: 8px;
+}
+
+.danger-button:hover {
+  background: var(--color-danger-hover) !important;
+}

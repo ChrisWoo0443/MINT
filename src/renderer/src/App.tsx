@@ -43,7 +43,18 @@ function App(): React.JSX.Element {
     }
 
     if (view === 'settings') {
-      return <Settings />
+      return (
+        <Settings
+          onRerunOnboarding={() => {
+            localStorage.removeItem('onboardingComplete')
+            setOnboardingComplete(false)
+          }}
+          onResetApp={() => {
+            localStorage.clear()
+            setOnboardingComplete(false)
+          }}
+        />
+      )
     }
 
     return (
@@ -60,7 +71,13 @@ function App(): React.JSX.Element {
             await window.mintAPI.startRecording({
               title: defaultTitle,
               userName,
-              micDeviceId: localStorage.getItem('micDeviceId') || undefined
+              micDeviceId: localStorage.getItem('micDeviceId') || undefined,
+              deepgramApiKey: localStorage.getItem('deepgramApiKey') || undefined,
+              openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
+              notesProvider:
+                (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,
+              ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
+              ollamaModel: localStorage.getItem('ollamaModel') || undefined
             })
             setView('recording')
           } catch (error) {

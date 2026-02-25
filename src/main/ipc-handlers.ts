@@ -230,11 +230,15 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('ollama:listModels', async (_event, url: string) => {
     try {
+      console.log('[MINT] Fetching Ollama models from:', url)
       const response = await fetch(`${url}/api/tags`)
       if (!response.ok) throw new Error('Failed to fetch')
       const data = await response.json()
-      return (data.models || []).map((m: { name: string }) => m.name)
-    } catch {
+      const models = (data.models || []).map((m: { name: string }) => m.name)
+      console.log('[MINT] Ollama models:', models)
+      return models
+    } catch (error) {
+      console.error('[MINT] Ollama fetch error:', error)
       return null
     }
   })

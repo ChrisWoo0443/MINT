@@ -1,12 +1,30 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export function Settings(): React.JSX.Element {
+interface SettingsProps {
+  onRerunOnboarding: () => void
+  onResetApp: () => void
+}
+
+export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): React.JSX.Element {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string>(
     () => localStorage.getItem('micDeviceId') || ''
   )
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
   const [storagePath, setStoragePath] = useState('')
+  const [deepgramKey, setDeepgramKey] = useState(() => localStorage.getItem('deepgramApiKey') || '')
+  const [notesProvider, setNotesProvider] = useState<'openai' | 'ollama'>(
+    () => (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || 'openai'
+  )
+  const [openaiKey, setOpenaiKey] = useState(() => localStorage.getItem('openaiApiKey') || '')
+  const [ollamaUrl, setOllamaUrl] = useState(
+    () => localStorage.getItem('ollamaUrl') || 'http://localhost:11434'
+  )
+  const [ollamaModel, setOllamaModel] = useState(
+    () => localStorage.getItem('ollamaModel') || ''
+  )
+  const [ollamaModels, setOllamaModels] = useState<string[]>([])
+  const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'error'>('idle')
 
   const loadDevices = useCallback(async (): Promise<void> => {
     const devices = await navigator.mediaDevices.enumerateDevices()
@@ -22,6 +40,29 @@ export function Settings(): React.JSX.Element {
     loadDevices()
     window.mintAPI.getStoragePath().then(setStoragePath)
   }, [loadDevices])
+
+  const loadOllamaModels = useCallback(async (url: string): Promise<void> => {
+    setOllamaStatus('loading')
+    const models = await window.mintAPI.listOllamaModels(url)
+    if (models === null) {
+      setOllamaModels([])
+      setOllamaStatus('error')
+      return
+    }
+    setOllamaModels(models)
+    setOllamaStatus('idle')
+    if (models.length > 0 && !ollamaModel) {
+      setOllamaModel(models[0])
+      localStorage.setItem('ollamaModel', models[0])
+    }
+  }, [ollamaModel])
+
+  useEffect(() => {
+    if (notesProvider === 'ollama') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadOllamaModels(ollamaUrl)
+    }
+  }, [notesProvider, ollamaUrl, loadOllamaModels])
 
   const handleDeviceChange = async (deviceId: string): Promise<void> => {
     setSelectedDevice(deviceId)
@@ -75,6 +116,95 @@ export function Settings(): React.JSX.Element {
       </section>
 
       <section>
+        <h3>Transcription</h3>
+        <label htmlFor="deepgram-key">Deepgram API Key</label>
+        <input
+          id="deepgram-key"
+          type="password"
+          value={deepgramKey}
+          onChange={(e) => {
+            setDeepgramKey(e.target.value)
+            localStorage.setItem('deepgramApiKey', e.target.value)
+          }}
+          placeholder="Enter Deepgram API key"
+        />
+      </section>
+
+      <section>
+        <h3>Notes Generation</h3>
+        <label htmlFor="notes-provider">Provider</label>
+        <select
+          id="notes-provider"
+          value={notesProvider}
+          onChange={(e) => {
+            const value = e.target.value as 'openai' | 'ollama'
+            setNotesProvider(value)
+            localStorage.setItem('notesProvider', value)
+          }}
+        >
+          <option value="openai">OpenAI</option>
+          <option value="ollama">Ollama (Local)</option>
+        </select>
+
+        {notesProvider === 'openai' && (
+          <>
+            <label htmlFor="openai-key">OpenAI API Key</label>
+            <input
+              id="openai-key"
+              type="password"
+              value={openaiKey}
+              onChange={(e) => {
+                setOpenaiKey(e.target.value)
+                localStorage.setItem('openaiApiKey', e.target.value)
+              }}
+              placeholder="Enter OpenAI API key"
+            />
+          </>
+        )}
+
+        {notesProvider === 'ollama' && (
+          <>
+            <label htmlFor="ollama-url">Ollama URL</label>
+            <input
+              id="ollama-url"
+              type="text"
+              value={ollamaUrl}
+              onChange={(e) => {
+                setOllamaUrl(e.target.value)
+                localStorage.setItem('ollamaUrl', e.target.value)
+              }}
+              placeholder="http://localhost:11434"
+            />
+            <label htmlFor="ollama-model">Model</label>
+            {ollamaStatus === 'loading' ? (
+              <p className="settings-hint">Loading models...</p>
+            ) : ollamaStatus === 'error' ? (
+              <p className="settings-hint" style={{ color: 'var(--color-danger)' }}>
+                Could not connect to Ollama. Make sure it is running.
+              </p>
+            ) : ollamaModels.length === 0 ? (
+              <p className="settings-hint">No models found. Pull a model with `ollama pull`.</p>
+            ) : (
+              <select
+                id="ollama-model"
+                value={ollamaModel}
+                onChange={(e) => {
+                  setOllamaModel(e.target.value)
+                  localStorage.setItem('ollamaModel', e.target.value)
+                }}
+              >
+                {ollamaModels.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
+        )}
+      </section>
+
+      <section>
         <h3>Storage</h3>
         <label>Meetings Folder</label>
         <div className="storage-picker">
@@ -84,6 +214,21 @@ export function Settings(): React.JSX.Element {
           </button>
         </div>
         <p className="setup-hint">Meeting transcripts and notes are saved here.</p>
+      </section>
+
+      <section>
+        <h3>Reset</h3>
+        <button onClick={onRerunOnboarding}>Re-run Onboarding</button>
+        <button
+          className="danger-button"
+          onClick={() => {
+            if (window.confirm('Reset all settings? API keys and preferences will be cleared.')) {
+              onResetApp()
+            }
+          }}
+        >
+          Reset All Settings
+        </button>
       </section>
     </div>
   )
