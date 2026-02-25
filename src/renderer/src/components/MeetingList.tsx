@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
 import { MeetingCard } from './MeetingCard'
 
 interface Meeting {
   id: string
   title: string
-  started_at: string
-  ended_at: string | null
+  startedAt: string
+  endedAt: string | null
   status: string
 }
 
@@ -22,20 +21,16 @@ export function MeetingList({
   const [meetings, setMeetings] = useState<Meeting[]>([])
 
   const loadMeetings = useCallback(async (): Promise<void> => {
-    const { data } = await supabase
-      .from('meetings')
-      .select('*')
-      .order('started_at', { ascending: false })
-    if (data) setMeetings(data)
+    const data = await window.mintAPI.listMeetings()
+    setMeetings(data)
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMeetings()
   }, [loadMeetings])
 
   const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
-    await supabase.from('meetings').delete().eq('id', meetingId)
+    await window.mintAPI.deleteMeeting(meetingId)
     setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
   }
 
