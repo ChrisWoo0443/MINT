@@ -70,7 +70,6 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   }, [meetingId])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMeetingData()
   }, [loadMeetingData])
 
@@ -180,12 +179,9 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
         {availableTags
           .filter((t) => (meeting.tags ?? []).includes(t.id))
           .map((tag) => (
-            <span
-              key={tag.id}
-              className="tag-dot"
-              style={{ background: tag.color }}
-              title={tag.name}
-            />
+            <span key={tag.id} className="tag-badge" style={{ background: tag.color }}>
+              {tag.name}
+            </span>
           ))}
         <TagPicker
           tags={availableTags}
