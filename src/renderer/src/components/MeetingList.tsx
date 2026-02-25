@@ -78,6 +78,7 @@ export function MeetingList({
   )
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [dragOverSection, setDragOverSection] = useState<string | null>(null)
 
   const loadData = useCallback(async (): Promise<void> => {
     const [meetingsData, tagsData] = await Promise.all([
@@ -96,7 +97,6 @@ export function MeetingList({
   const { customGroups, dateGroups } = useMemo(() => {
     const assignedMeetingIds = new Set(Object.keys(sectionAssignments))
 
-    // Custom section groups
     const customMap = new Map<string, Meeting[]>()
     for (const section of customSections) {
       customMap.set(section.id, [])
@@ -114,7 +114,6 @@ export function MeetingList({
       meetings: customMap.get(section.id) || []
     }))
 
-    // Date section groups (only unassigned meetings)
     const dateMap = new Map<string, Meeting[]>()
     for (const meeting of meetings) {
       if (assignedMeetingIds.has(meeting.id)) continue
@@ -157,7 +156,6 @@ export function MeetingList({
     if (!editingSection) return
     const trimmed = editValue.trim()
 
-    // Check if it's a custom section
     const customSection = customSections.find((s) => s.id === editingSection)
     if (customSection) {
       if (trimmed) {
@@ -168,7 +166,6 @@ export function MeetingList({
         })
       }
     } else {
-      // Date section rename
       setSectionNames((prev) => {
         const next = { ...prev }
         if (!trimmed || trimmed === editingSection) {
@@ -225,6 +222,30 @@ export function MeetingList({
     })
   }
 
+  const handleSectionDragOver = (e: React.DragEvent, sectionId: string): void => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverSection(sectionId)
+  }
+
+  const handleSectionDragLeave = (): void => {
+    setDragOverSection(null)
+  }
+
+  const handleSectionDrop = (e: React.DragEvent, sectionId: string, isCustom: boolean): void => {
+    e.preventDefault()
+    setDragOverSection(null)
+    const meetingId = e.dataTransfer.getData('text/plain')
+    if (!meetingId) return
+
+    if (isCustom) {
+      moveMeeting(meetingId, sectionId)
+    } else {
+      // Dropping on a date section removes the custom assignment
+      moveMeeting(meetingId, null)
+    }
+  }
+
   const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
     await window.mintAPI.deleteMeeting(meetingId)
     setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
@@ -247,8 +268,6 @@ export function MeetingList({
     setMeetings((prev) => prev.map((m) => (m.id === meetingId ? { ...m, tags: newTags } : m)))
   }
 
-  const moveTargets = customSections.map((s) => ({ id: s.id, name: s.name }))
-
   return (
     <div className="meeting-list">
       <div className="meeting-list-header">
@@ -265,10 +284,16 @@ export function MeetingList({
       ) : (
         allGroups.map(({ section, name, isCustom, meetings: sectionMeetings }) => {
           const isCollapsed = collapsed[section] ?? false
+          const isDragOver = dragOverSection === section
 
           return (
             <div key={section} className="meeting-section">
-              <div className="meeting-section-header">
+              <div
+                className={`meeting-section-header ${isDragOver ? 'drag-over' : ''}`}
+                onDragOver={(e) => handleSectionDragOver(e, section)}
+                onDragLeave={handleSectionDragLeave}
+                onDrop={(e) => handleSectionDrop(e, section, isCustom)}
+              >
                 <button
                   className="meeting-section-toggle"
                   onClick={() => toggleCollapse(section)}
@@ -317,9 +342,6 @@ export function MeetingList({
                     onClick={() => onSelectMeeting(meeting.id)}
                     onDelete={handleDeleteMeeting}
                     onToggleTag={handleToggleTag}
-                    moveTargets={moveTargets}
-                    currentSection={isCustom ? section : null}
-                    onMove={moveMeeting}
                   />
                 ))}
             </div>
