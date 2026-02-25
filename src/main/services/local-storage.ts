@@ -8,6 +8,7 @@ export interface MeetingMetadata {
   status: string
   startedAt: string
   endedAt: string | null
+  tags?: string[]
 }
 
 export interface TranscriptEntry {
@@ -22,6 +23,19 @@ export interface NoteData {
   decisions: string[]
   actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
 }
+
+export interface TagDefinition {
+  id: string
+  name: string
+  color: string
+}
+
+const DEFAULT_TAGS: TagDefinition[] = [
+  { id: 'red', name: 'Red', color: '#FF3B30' },
+  { id: 'blue', name: 'Blue', color: '#007AFF' },
+  { id: 'green', name: 'Green', color: '#34C759' },
+  { id: 'yellow', name: 'Yellow', color: '#FFCC00' }
+]
 
 export class LocalStorageService {
   private storagePath: string
@@ -216,6 +230,32 @@ export class LocalStorageService {
 
   clearTranscriptBuffer(meetingId: string): void {
     this.transcriptBuffers.delete(meetingId)
+  }
+
+  async getTags(): Promise<TagDefinition[]> {
+    await this.ensureStorageDir()
+    const tagsPath = join(this.storagePath, 'tags.json')
+    try {
+      const raw = await readFile(tagsPath, 'utf-8')
+      const data = JSON.parse(raw)
+      return data.tags as TagDefinition[]
+    } catch {
+      await writeFile(tagsPath, JSON.stringify({ tags: DEFAULT_TAGS }, null, 2), 'utf-8')
+      return DEFAULT_TAGS
+    }
+  }
+
+  async saveTags(tags: TagDefinition[]): Promise<void> {
+    await this.ensureStorageDir()
+    const tagsPath = join(this.storagePath, 'tags.json')
+    await writeFile(tagsPath, JSON.stringify({ tags }, null, 2), 'utf-8')
+  }
+
+  async setMeetingTags(meetingId: string, tags: string[]): Promise<void> {
+    const metadataPath = join(this.storagePath, meetingId, 'metadata.json')
+    const metadata = await this.readMetadataFile(metadataPath)
+    metadata.tags = tags
+    await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8')
   }
 
   // --- Private helpers ---
