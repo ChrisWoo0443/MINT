@@ -1,42 +1,91 @@
-import { ipcMain, BrowserWindow, shell } from 'electron'
+import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
 import { AudioCaptureService } from './services/audio-capture'
 import { AudioTeeService } from './services/audiotee'
 import { DeepgramService } from './services/deepgram'
 import { OpenAIService } from './services/openai'
-import { SupabaseService } from './services/supabase'
+import { LocalStorageService } from './services/local-storage'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   const audioCaptureService = new AudioCaptureService()
   const audioTeeService = new AudioTeeService()
   const micDeepgramService = new DeepgramService()
   const systemDeepgramService = new DeepgramService()
-  const supabaseService = new SupabaseService(
-    process.env.VITE_SUPABASE_URL || '',
-    process.env.VITE_SUPABASE_ANON_KEY || ''
-  )
+  const localStorageService = new LocalStorageService()
 
   let currentMeetingId: string | null = null
+  let currentOpenaiApiKey: string = process.env.OPENAI_API_KEY || ''
+  let currentNotesProvider: 'openai' | 'ollama' = 'openai'
+  let currentOllamaUrl: string = 'http://localhost:11434'
+  let currentOllamaModel: string = ''
+
+  // --- Storage handlers ---
+
+  ipcMain.handle('storage:getPath', () => localStorageService.getStoragePath())
+
+  ipcMain.handle('storage:setPath', (_event, newPath: string) =>
+    localStorageService.setStoragePath(newPath)
+  )
+
+  ipcMain.handle('storage:pickFolder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Choose meetings storage folder'
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  // --- Meeting data handlers ---
+
+  ipcMain.handle('meetings:list', async () => localStorageService.listMeetings())
+
+  ipcMain.handle('meetings:get', async (_event, meetingId: string) =>
+    localStorageService.getMeeting(meetingId)
+  )
+
+  ipcMain.handle('meetings:delete', async (_event, meetingId: string) =>
+    localStorageService.deleteMeeting(meetingId)
+  )
+
+  ipcMain.handle('meetings:rename', async (_event, meetingId: string, newTitle: string) =>
+    localStorageService.renameMeeting(meetingId, newTitle)
+  )
+
+  ipcMain.handle('meetings:getNotes', async (_event, meetingId: string) =>
+    localStorageService.getNote(meetingId)
+  )
+
+  ipcMain.handle('meetings:getTranscripts', async (_event, meetingId: string) =>
+    localStorageService.getTranscripts(meetingId)
+  )
+
+  // --- Recording handlers ---
 
   ipcMain.handle(
     'recording:start',
     async (
       _event,
       args: {
-        userId: string
         title: string
-        accessToken: string
         userName: string
         micDeviceId?: string
+        deepgramApiKey?: string
+        openaiApiKey?: string
+        notesProvider?: 'openai' | 'ollama'
+        ollamaUrl?: string
+        ollamaModel?: string
       }
     ) => {
       try {
-        const { userId, title, accessToken, userName } = args
+        const { title, userName } = args
 
-        supabaseService.setAccessToken(accessToken)
+        currentMeetingId = await localStorageService.createMeeting(title)
 
-        currentMeetingId = await supabaseService.createMeeting(userId, title)
-
-        const deepgramApiKey = process.env.DEEPGRAM_API_KEY || ''
+        const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
+        currentOpenaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
+        currentNotesProvider = args.notesProvider || 'openai'
+        currentOllamaUrl = args.ollamaUrl || 'http://localhost:11434'
+        currentOllamaModel = args.ollamaModel || ''
 
         const handleTranscript = async (result: {
           speaker: string | null
@@ -49,7 +98,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
           if (result.isFinal && currentMeetingId) {
             try {
-              await supabaseService.insertTranscriptChunk(
+              await localStorageService.insertTranscriptChunk(
                 currentMeetingId,
                 result.speaker,
                 result.content,
@@ -111,35 +160,50 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     currentMeetingId = null
 
     try {
-      await supabaseService.updateMeetingStatus(meetingId, 'processing')
+      await localStorageService.updateMeetingStatus(meetingId, 'processing')
 
-      const fullTranscript = await supabaseService.getFullTranscript(meetingId)
+      const fullTranscript = await localStorageService.getFullTranscript(meetingId)
+      localStorageService.clearTranscriptBuffer(meetingId)
 
       if (!fullTranscript.trim()) {
-        await supabaseService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
+        await localStorageService.updateMeetingStatus(
+          meetingId,
+          'completed',
+          new Date().toISOString()
+        )
         mainWindow.webContents.send('recording:status', 'stopped')
         return
       }
 
-      const openaiService = new OpenAIService(process.env.OPENAI_API_KEY || '')
-      const { notes, rawResponse } = await openaiService.generateNotes(fullTranscript)
+      const openaiService =
+        currentNotesProvider === 'ollama'
+          ? new OpenAIService({
+              provider: 'ollama',
+              ollamaUrl: currentOllamaUrl,
+              ollamaModel: currentOllamaModel
+            })
+          : new OpenAIService({ provider: 'openai', apiKey: currentOpenaiApiKey })
+      const { notes } = await openaiService.generateNotes(fullTranscript)
 
-      await supabaseService.saveNotes(
+      await localStorageService.saveNotes(
         meetingId,
         notes.summary,
         notes.decisions,
-        notes.actionItems,
-        rawResponse
+        notes.actionItems
       )
 
-      await supabaseService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
+      await localStorageService.updateMeetingStatus(
+        meetingId,
+        'completed',
+        new Date().toISOString()
+      )
 
       mainWindow.webContents.send('recording:status', 'stopped')
     } catch (processingError) {
       console.error('Failed to process meeting notes:', processingError)
 
       try {
-        await supabaseService.updateMeetingStatus(meetingId, 'failed')
+        await localStorageService.updateMeetingStatus(meetingId, 'failed')
       } catch (updateError) {
         console.error('Failed to update meeting status to failed:', updateError)
       }
@@ -147,6 +211,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       mainWindow.webContents.send('recording:status', 'stopped')
     }
   })
+
+  // --- Audio handlers ---
 
   ipcMain.on('audio:chunk:mic', (_event, chunk: Buffer) => {
     micDeepgramService.sendAudio(chunk)
@@ -159,6 +225,21 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('audio:setDevice', async () => {
     // Will be implemented in a future task
   })
+
+  // --- Ollama handler ---
+
+  ipcMain.handle('ollama:listModels', async (_event, url: string) => {
+    try {
+      const response = await fetch(`${url}/api/tags`)
+      if (!response.ok) throw new Error('Failed to fetch')
+      const data = await response.json()
+      return (data.models || []).map((m: { name: string }) => m.name)
+    } catch {
+      return null
+    }
+  })
+
+  // --- Shell handlers ---
 
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
     await shell.openExternal(url)
