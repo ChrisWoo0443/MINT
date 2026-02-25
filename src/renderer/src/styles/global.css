@@ -748,6 +748,41 @@ label {
   font-size: 12px;
 }
 
+/* ----- Generate Notes ----- */
+.generate-notes-button {
+  margin-top: 16px;
+  padding: 8px 18px;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.generate-notes-button:hover {
+  background: var(--color-accent-hover);
+}
+
+.generate-notes-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.no-notes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.generate-error {
+  color: var(--color-danger);
+  font-size: 13px;
+}
+
 /* ----- Transcript Tab ----- */
 .transcript-search {
   margin-bottom: 16px;
@@ -1044,7 +1079,7 @@ label {
 .tag-picker-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
+  left: 0;
   z-index: 100;
   margin-top: 4px;
   min-width: 160px;
