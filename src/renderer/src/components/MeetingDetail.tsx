@@ -1,4 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { TagPicker } from './TagPicker'
+
+interface TagDefinition {
+  id: string
+  name: string
+  color: string
+}
 
 interface Meeting {
   id: string
@@ -6,6 +13,7 @@ interface Meeting {
   startedAt: string
   endedAt: string | null
   status: string
+  tags?: string[]
 }
 
 interface Note {
@@ -39,21 +47,24 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   const [notes, setNotes] = useState<Note | null>(null)
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
   const [activeTab, setActiveTab] = useState<ActiveTab>('summary')
+  const [availableTags, setAvailableTags] = useState<TagDefinition[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const titleInputRef = useRef<HTMLInputElement>(null)
 
   const loadMeetingData = useCallback(async (): Promise<void> => {
-    const [meetingData, notesData, transcriptsData] = await Promise.all([
+    const [meetingData, notesData, transcriptsData, tagsData] = await Promise.all([
       window.mintAPI.getMeeting(meetingId),
       window.mintAPI.getMeetingNotes(meetingId),
-      window.mintAPI.getMeetingTranscripts(meetingId)
+      window.mintAPI.getMeetingTranscripts(meetingId),
+      window.mintAPI.getTags()
     ])
 
     setMeeting(meetingData)
     if (notesData) setNotes(notesData)
     setTranscripts(transcriptsData)
+    setAvailableTags(tagsData)
   }, [meetingId])
 
   useEffect(() => {
@@ -78,6 +89,16 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
       setMeeting({ ...meeting, title: trimmed })
     }
     setIsEditingTitle(false)
+  }
+
+  const handleToggleTag = async (tagId: string): Promise<void> => {
+    if (!meeting) return
+    const currentTags = meeting.tags ?? []
+    const newTags = currentTags.includes(tagId)
+      ? currentTags.filter((t) => t !== tagId)
+      : [...currentTags, tagId]
+    await window.mintAPI.setMeetingTags(meetingId, newTags)
+    setMeeting({ ...meeting, tags: newTags })
   }
 
   const filteredTranscripts = transcripts.filter((transcript) =>
@@ -130,6 +151,18 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
           {meeting.title}
         </h2>
       )}
+      <div className="detail-tags-row">
+        {availableTags
+          .filter((t) => (meeting.tags ?? []).includes(t.id))
+          .map((tag) => (
+            <span key={tag.id} className="tag-dot" style={{ background: tag.color }} title={tag.name} />
+          ))}
+        <TagPicker
+          tags={availableTags}
+          selectedTagIds={meeting.tags ?? []}
+          onToggleTag={handleToggleTag}
+        />
+      </div>
       <p className="meeting-date">{new Date(meeting.startedAt).toLocaleString()}</p>
       <span className={`status-badge status-${meeting.status}`}>{meeting.status}</span>
 
