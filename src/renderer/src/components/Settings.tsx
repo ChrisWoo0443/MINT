@@ -18,6 +18,7 @@ export function Settings(): React.JSX.Element {
   }, [selectedDevice])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDevices()
     window.mintAPI.getStoragePath().then(setStoragePath)
   }, [loadDevices])

@@ -43,7 +43,10 @@ export class LocalStorageService {
     await this.ensureStorageDir()
 
     const now = new Date()
-    const isoTimestamp = now.toISOString().replace(/:/g, '-').replace(/\.\d+Z$/, '')
+    const isoTimestamp = now
+      .toISOString()
+      .replace(/:/g, '-')
+      .replace(/\.\d+Z$/, '')
     const titleSlug = title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -164,9 +167,7 @@ export class LocalStorageService {
       }
     }
 
-    meetings.sort(
-      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
-    )
+    meetings.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
 
     return meetings
   }
@@ -275,7 +276,10 @@ export class LocalStorageService {
       if (section.startsWith('Summary')) {
         summary = section.replace(/^Summary\n/, '').trim()
       } else if (section.startsWith('Decisions')) {
-        const decisionLines = section.replace(/^Decisions\n/, '').trim().split('\n')
+        const decisionLines = section
+          .replace(/^Decisions\n/, '')
+          .trim()
+          .split('\n')
         for (const decisionLine of decisionLines) {
           const cleaned = decisionLine.replace(/^-\s*/, '').trim()
           if (cleaned && cleaned !== 'None') {
@@ -283,7 +287,10 @@ export class LocalStorageService {
           }
         }
       } else if (section.startsWith('Action Items')) {
-        const actionItemLines = section.replace(/^Action Items\n/, '').trim().split('\n')
+        const actionItemLines = section
+          .replace(/^Action Items\n/, '')
+          .trim()
+          .split('\n')
         const actionItemPattern = /^-\s*\[[ x]\]\s*(.+)$/
         for (const actionLine of actionItemLines) {
           const actionMatch = actionLine.match(actionItemPattern)

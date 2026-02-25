@@ -57,6 +57,7 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   }, [meetingId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMeetingData()
   }, [loadMeetingData])
 
