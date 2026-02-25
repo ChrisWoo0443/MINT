@@ -1,4 +1,9 @@
-import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk'
+import {
+  createClient,
+  LiveTranscriptionEvents,
+  ListenLiveClient,
+  type LiveTranscriptionEvent
+} from '@deepgram/sdk'
 
 export interface TranscriptResult {
   speaker: string | null
@@ -9,11 +14,12 @@ export interface TranscriptResult {
 }
 
 export class DeepgramService {
-  private connection: any | null = null
+  private connection: ListenLiveClient | null = null
   private onResult: ((result: TranscriptResult) => void) | null = null
 
   async startStreaming(
     apiKey: string,
+    speakerLabel: string,
     onResult: (result: TranscriptResult) => void
   ): Promise<void> {
     this.onResult = onResult
@@ -24,23 +30,22 @@ export class DeepgramService {
       language: 'en',
       smart_format: true,
       punctuate: true,
-      diarize: true,
+      diarize: false,
       interim_results: true,
       encoding: 'linear16',
       sample_rate: 16000
     })
 
-    this.connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+    this.connection.on(LiveTranscriptionEvents.Transcript, (data: LiveTranscriptionEvent) => {
       const alternative = data.channel?.alternatives?.[0]
       if (!alternative || !alternative.transcript) return
 
       const words = alternative.words || []
-      const speaker = words.length > 0 ? `Speaker ${words[0].speaker ?? 0}` : null
       const startTime = words.length > 0 ? words[0].start : 0
       const endTime = words.length > 0 ? words[words.length - 1].end : 0
 
       this.onResult?.({
-        speaker,
+        speaker: speakerLabel,
         content: alternative.transcript,
         timestampStart: startTime,
         timestampEnd: endTime,
@@ -48,19 +53,25 @@ export class DeepgramService {
       })
     })
 
-    this.connection.on(LiveTranscriptionEvents.Error, (error: any) => {
+    this.connection.on(LiveTranscriptionEvents.Error, (error: unknown) => {
       console.error('Deepgram error:', error)
     })
 
+    const connection = this.connection
     return new Promise<void>((resolve, reject) => {
-      this.connection.on(LiveTranscriptionEvents.Open, () => resolve())
-      this.connection.on(LiveTranscriptionEvents.Error, (error: any) => reject(error))
+      connection.on(LiveTranscriptionEvents.Open, () => resolve())
+      connection.on(LiveTranscriptionEvents.Error, (error: unknown) => reject(error))
     })
   }
 
   sendAudio(audioBuffer: Buffer): void {
     if (this.connection) {
-      this.connection.send(audioBuffer)
+      this.connection.send(
+        audioBuffer.buffer.slice(
+          audioBuffer.byteOffset,
+          audioBuffer.byteOffset + audioBuffer.byteLength
+        )
+      )
     }
   }
 
