@@ -9,9 +9,7 @@ export function Settings({ onRerunSetup }: SettingsProps): React.JSX.Element {
   const { user, signOut } = useAuth()
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string>('')
-  const [displayName, setDisplayName] = useState(
-    () => localStorage.getItem('displayName') || ''
-  )
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
   const [blackholeDetected, setBlackholeDetected] = useState(false)
 
   const loadDevices = useCallback(async (): Promise<void> => {
@@ -31,6 +29,7 @@ export function Settings({ onRerunSetup }: SettingsProps): React.JSX.Element {
   }, [selectedDevice])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDevices()
   }, [loadDevices])
 
@@ -84,7 +83,9 @@ export function Settings({ onRerunSetup }: SettingsProps): React.JSX.Element {
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: blackholeDetected ? 'var(--color-status-completed)' : 'var(--color-status-failed)',
+              background: blackholeDetected
+                ? 'var(--color-status-completed)'
+                : 'var(--color-status-failed)',
               marginRight: 8
             }}
           />

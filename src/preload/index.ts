@@ -87,7 +87,7 @@ const mintAPI: MintAPI = {
   openApp: (appPath: string) => ipcRenderer.invoke('shell:openApp', appPath)
 }
 
-// --- Audio capture (renderer-side for macOS desktopCapturer audio) ---
+// --- Audio capture (renderer-side for macOS BlackHole + microphone) ---
 
 const TARGET_SAMPLE_RATE = 16000
 
@@ -148,15 +148,19 @@ function createAudioPipeline(
   return processor
 }
 
-async function startAudioCapture(deviceConfig: { micDeviceId: string; blackholeDeviceId: string }): Promise<void> {
+async function startAudioCapture(deviceConfig: {
+  micDeviceId: string
+  blackholeDeviceId: string
+}): Promise<void> {
   try {
     activeAudioContext = new AudioContext()
 
     // Capture microphone
     const micConstraints: MediaStreamConstraints = {
-      audio: deviceConfig.micDeviceId && deviceConfig.micDeviceId !== 'default'
-        ? { deviceId: { exact: deviceConfig.micDeviceId } }
-        : true
+      audio:
+        deviceConfig.micDeviceId && deviceConfig.micDeviceId !== 'default'
+          ? { deviceId: { exact: deviceConfig.micDeviceId } }
+          : true
     }
     const micStream = await navigator.mediaDevices.getUserMedia(micConstraints)
     activeStreams.push(micStream)
@@ -203,9 +207,12 @@ function stopAudioCapture(): void {
   activeStreams = []
 }
 
-ipcRenderer.on('audio:startCapture', (_event, deviceConfig: { micDeviceId: string; blackholeDeviceId: string }) => {
-  startAudioCapture(deviceConfig)
-})
+ipcRenderer.on(
+  'audio:startCapture',
+  (_event, deviceConfig: { micDeviceId: string; blackholeDeviceId: string }) => {
+    startAudioCapture(deviceConfig)
+  }
+)
 
 ipcRenderer.on('audio:stopCapture', () => {
   stopAudioCapture()

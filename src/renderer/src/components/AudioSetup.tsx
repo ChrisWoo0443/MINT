@@ -76,9 +76,7 @@ export function AudioSetup({ onComplete }: AudioSetupProps): React.JSX.Element {
                 placeholder="Enter your display name"
                 onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
               />
-              <p className="setup-hint">
-                This is used to label your voice in meeting transcripts.
-              </p>
+              <p className="setup-hint">This is used to label your voice in meeting transcripts.</p>
             </div>
             {error && <p className="error">{error}</p>}
             <button onClick={handleNameSubmit} disabled={!displayName.trim()}>
@@ -120,18 +118,26 @@ export function AudioSetup({ onComplete }: AudioSetupProps): React.JSX.Element {
             <h2>Create Multi-Output Device</h2>
             <div className="setup-step-content">
               <p>
-                A Multi-Output Device lets you hear meeting audio through your speakers while
-                MINT captures it through BlackHole.
+                A Multi-Output Device lets you hear meeting audio through your speakers while MINT
+                captures it through BlackHole.
               </p>
               <ol className="setup-instructions">
                 <li>Open Audio MIDI Setup</li>
-                <li>Click the <strong>+</strong> button in the bottom left</li>
-                <li>Select <strong>Create Multi-Output Device</strong></li>
-                <li>Check both your speakers/headphones and <strong>BlackHole 2ch</strong></li>
+                <li>
+                  Click the <strong>+</strong> button in the bottom left
+                </li>
+                <li>
+                  Select <strong>Create Multi-Output Device</strong>
+                </li>
+                <li>
+                  Check both your speakers/headphones and <strong>BlackHole 2ch</strong>
+                </li>
               </ol>
               <button
                 className="setup-action-button"
-                onClick={() => window.mintAPI.openApp('/Applications/Utilities/Audio MIDI Setup.app')}
+                onClick={() =>
+                  window.mintAPI.openApp('/Applications/Utilities/Audio MIDI Setup.app')
+                }
               >
                 Open Audio MIDI Setup
               </button>
@@ -145,16 +151,22 @@ export function AudioSetup({ onComplete }: AudioSetupProps): React.JSX.Element {
             <h2>Set System Output</h2>
             <div className="setup-step-content">
               <p>
-                Set your new Multi-Output Device as the system sound output so meeting audio
-                flows through BlackHole.
+                Set your new Multi-Output Device as the system sound output so meeting audio flows
+                through BlackHole.
               </p>
               <ol className="setup-instructions">
                 <li>Open System Settings &rarr; Sound</li>
-                <li>Under <strong>Output</strong>, select your Multi-Output Device</li>
+                <li>
+                  Under <strong>Output</strong>, select your Multi-Output Device
+                </li>
               </ol>
               <button
                 className="setup-action-button"
-                onClick={() => window.mintAPI.openExternal('x-apple.systempreferences:com.apple.Sound-Settings.extension')}
+                onClick={() =>
+                  window.mintAPI.openExternal(
+                    'x-apple.systempreferences:com.apple.Sound-Settings.extension'
+                  )
+                }
               >
                 Open Sound Settings
               </button>

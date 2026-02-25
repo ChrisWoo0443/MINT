@@ -68,7 +68,11 @@ function AppContent(): React.JSX.Element {
         onStartRecording={async () => {
           try {
             const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
-            const userName = localStorage.getItem('displayName') || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You'
+            const userName =
+              localStorage.getItem('displayName') ||
+              user?.user_metadata?.full_name ||
+              user?.email?.split('@')[0] ||
+              'You'
             await window.mintAPI.startRecording({
               userId: session.user.id,
               title: defaultTitle,
