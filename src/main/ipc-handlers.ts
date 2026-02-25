@@ -75,7 +75,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           )
           console.log('[MINT] System audio Deepgram stream started (speaker: "Meeting Users")')
 
-          audioTeeService.start((chunk) => {
+          await audioTeeService.start((chunk) => {
             systemDeepgramService.sendAudio(chunk)
           })
         } catch (systemError) {
@@ -148,11 +148,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     }
   })
 
-  let micChunkCount = 0
-
   ipcMain.on('audio:chunk:mic', (_event, chunk: Buffer) => {
-    micChunkCount++
-    if (micChunkCount === 1) console.log('[MINT] Receiving mic audio chunks')
     micDeepgramService.sendAudio(chunk)
   })
 

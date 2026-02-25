@@ -1,14 +1,15 @@
 import { AudioTee } from 'audiotee'
+import { app } from 'electron'
 import { join } from 'path'
 
 export class AudioTeeService {
   private audioTee: AudioTee | null = null
   private onChunk: ((chunk: Buffer) => void) | null = null
 
-  start(onChunk: (chunk: Buffer) => void): void {
+  async start(onChunk: (chunk: Buffer) => void): Promise<void> {
     this.onChunk = onChunk
 
-    const binaryPath = process.resourcesPath ? join(process.resourcesPath, 'audiotee') : undefined
+    const binaryPath = app.isPackaged ? join(process.resourcesPath, 'audiotee') : undefined
 
     this.audioTee = new AudioTee({
       sampleRate: 16000,
@@ -23,8 +24,7 @@ export class AudioTeeService {
       console.error('[MINT] AudioTee error:', error)
     })
 
-    this.audioTee.start()
-    console.log('[MINT] AudioTee system audio capture started')
+    await this.audioTee.start()
   }
 
   stop(): void {

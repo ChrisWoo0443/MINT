@@ -51,9 +51,6 @@ export class DeepgramService {
         timestampEnd: endTime,
         isFinal: data.is_final ?? false
       }
-      console.log(
-        `[MINT] Transcript chunk — speaker: "${result.speaker}", final: ${result.isFinal}`
-      )
       this.onResult?.(result)
     })
 
