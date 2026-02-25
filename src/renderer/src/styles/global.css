@@ -392,6 +392,22 @@ label {
   text-overflow: ellipsis;
 }
 
+.editable-title {
+  cursor: text;
+}
+
+.rename-input-detail {
+  font-size: 20px;
+  font-weight: 600;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+}
+
 .meeting-card p {
   font-size: 12px;
   color: var(--color-text-tertiary);
@@ -901,7 +917,8 @@ label {
   margin-bottom: 16px;
 }
 
-.setup-hint {
+.setup-hint,
+.settings-hint {
   font-size: 12px !important;
   color: var(--color-text-tertiary) !important;
   margin-top: 6px;
@@ -942,4 +959,17 @@ label {
 .setup-step .error {
   margin-top: 8px;
   width: 100%;
+}
+
+.storage-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.storage-picker input {
+  flex: 1;
+}
+
+.storage-picker button {
+  white-space: nowrap;
 }
