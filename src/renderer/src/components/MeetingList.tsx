@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { MeetingCard } from './MeetingCard'
 
+interface TagDefinition {
+  id: string
+  name: string
+  color: string
+}
+
 interface Meeting {
   id: string
   title: string
   startedAt: string
   endedAt: string | null
   status: string
+  tags?: string[]
 }
 
 interface MeetingListProps {
@@ -19,20 +26,38 @@ export function MeetingList({
   onStartRecording
 }: MeetingListProps): React.JSX.Element {
   const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [availableTags, setAvailableTags] = useState<TagDefinition[]>([])
 
-  const loadMeetings = useCallback(async (): Promise<void> => {
-    const data = await window.mintAPI.listMeetings()
-    setMeetings(data)
+  const loadData = useCallback(async (): Promise<void> => {
+    const [meetingsData, tagsData] = await Promise.all([
+      window.mintAPI.listMeetings(),
+      window.mintAPI.getTags()
+    ])
+    setMeetings(meetingsData)
+    setAvailableTags(tagsData)
   }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadMeetings()
-  }, [loadMeetings])
+    loadData()
+  }, [loadData])
 
   const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
     await window.mintAPI.deleteMeeting(meetingId)
     setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
+  }
+
+  const handleToggleTag = async (meetingId: string, tagId: string): Promise<void> => {
+    const meeting = meetings.find((m) => m.id === meetingId)
+    if (!meeting) return
+    const currentTags = meeting.tags ?? []
+    const newTags = currentTags.includes(tagId)
+      ? currentTags.filter((t) => t !== tagId)
+      : [...currentTags, tagId]
+    await window.mintAPI.setMeetingTags(meetingId, newTags)
+    setMeetings((prev) =>
+      prev.map((m) => (m.id === meetingId ? { ...m, tags: newTags } : m))
+    )
   }
 
   return (
@@ -48,8 +73,10 @@ export function MeetingList({
           <MeetingCard
             key={meeting.id}
             meeting={meeting}
+            availableTags={availableTags}
             onClick={() => onSelectMeeting(meeting.id)}
             onDelete={handleDeleteMeeting}
+            onToggleTag={handleToggleTag}
           />
         ))
       )}

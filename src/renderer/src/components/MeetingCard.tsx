@@ -1,22 +1,42 @@
+import { TagPicker } from './TagPicker'
+
+interface TagDefinition {
+  id: string
+  name: string
+  color: string
+}
+
 interface Meeting {
   id: string
   title: string
   startedAt: string
   endedAt: string | null
   status: string
+  tags?: string[]
 }
 
 interface MeetingCardProps {
   meeting: Meeting
+  availableTags: TagDefinition[]
   onClick: () => void
   onDelete: (meetingId: string) => void
+  onToggleTag: (meetingId: string, tagId: string) => void
 }
 
-export function MeetingCard({ meeting, onClick, onDelete }: MeetingCardProps): React.JSX.Element {
+export function MeetingCard({
+  meeting,
+  availableTags,
+  onClick,
+  onDelete,
+  onToggleTag
+}: MeetingCardProps): React.JSX.Element {
   const date = new Date(meeting.startedAt).toLocaleDateString()
   const duration = meeting.endedAt
     ? formatDuration(new Date(meeting.startedAt), new Date(meeting.endedAt))
     : 'In progress'
+
+  const meetingTags = meeting.tags ?? []
+  const assignedTags = availableTags.filter((t) => meetingTags.includes(t.id))
 
   const handleDelete = (e: React.MouseEvent): void => {
     e.stopPropagation()
@@ -28,11 +48,21 @@ export function MeetingCard({ meeting, onClick, onDelete }: MeetingCardProps): R
   return (
     <div className="meeting-card" onClick={onClick}>
       <div className="meeting-card-header">
+        <div className="meeting-card-tags">
+          {assignedTags.map((tag) => (
+            <span key={tag.id} className="tag-dot" style={{ background: tag.color }} title={tag.name} />
+          ))}
+        </div>
         <h3>{meeting.title}</h3>
       </div>
       <p>{date}</p>
       <p>{duration}</p>
       <span className={`status-badge status-${meeting.status}`}>{meeting.status}</span>
+      <TagPicker
+        tags={availableTags}
+        selectedTagIds={meetingTags}
+        onToggleTag={(tagId) => onToggleTag(meeting.id, tagId)}
+      />
       <button className="delete-button" onClick={handleDelete} title="Delete meeting">
         ✕
       </button>
