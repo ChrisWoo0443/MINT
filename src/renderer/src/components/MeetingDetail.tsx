@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 interface Meeting {
@@ -42,11 +42,7 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   const [activeTab, setActiveTab] = useState<ActiveTab>('summary')
   const [searchQuery, setSearchQuery] = useState('')
 
-  useEffect(() => {
-    loadMeetingData()
-  }, [meetingId])
-
-  const loadMeetingData = async (): Promise<void> => {
+  const loadMeetingData = useCallback(async (): Promise<void> => {
     const [meetingResult, notesResult, transcriptsResult] = await Promise.all([
       supabase.from('meetings').select('*').eq('id', meetingId).single(),
       supabase.from('notes').select('*').eq('meeting_id', meetingId).single(),
@@ -60,7 +56,12 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
     if (meetingResult.data) setMeeting(meetingResult.data)
     if (notesResult.data) setNotes(notesResult.data)
     if (transcriptsResult.data) setTranscripts(transcriptsResult.data)
-  }
+  }, [meetingId])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadMeetingData()
+  }, [loadMeetingData])
 
   const filteredTranscripts = transcripts.filter((transcript) =>
     transcript.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -79,9 +80,21 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
 
   return (
     <div className="meeting-detail">
-      <button className="back-button" onClick={onBack}>
-        Back to Meetings
-      </button>
+      <div className="detail-header-actions">
+        <button className="back-button" onClick={onBack}>
+          Back to Meetings
+        </button>
+        <button
+          className="delete-button"
+          onClick={async () => {
+            if (!window.confirm('Delete this meeting? This cannot be undone.')) return
+            await supabase.from('meetings').delete().eq('id', meetingId)
+            onBack()
+          }}
+        >
+          Delete
+        </button>
+      </div>
 
       <h2>{meeting.title}</h2>
       <p className="meeting-date">{new Date(meeting.started_at).toLocaleString()}</p>

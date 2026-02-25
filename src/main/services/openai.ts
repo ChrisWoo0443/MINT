@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 
 export interface MeetingNotes {
   summary: string
@@ -6,17 +6,20 @@ export interface MeetingNotes {
   actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
 }
 
-export class GeminiService {
-  private genAI: GoogleGenerativeAI
+export class OpenAIService {
+  private client: OpenAI
 
   constructor(apiKey: string) {
-    this.genAI = new GoogleGenerativeAI(apiKey)
+    this.client = new OpenAI({ apiKey })
   }
 
   async generateNotes(transcript: string): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-
-    const prompt = `You are a meeting notes assistant. Analyze this meeting transcript and produce structured notes.
+    const response = await this.client.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a meeting notes assistant. Analyze meeting transcripts and produce structured notes.
 
 Return a JSON object with exactly this shape:
 {
@@ -30,15 +33,18 @@ Rules:
 - Extract every decision that was made, even implicit ones
 - Extract every action item, task, or follow-up mentioned
 - If an assignee or due date is mentioned, include them
-- Return ONLY valid JSON, no markdown fences
+- Return ONLY valid JSON, no markdown fences`
+        },
+        {
+          role: 'user',
+          content: transcript
+        }
+      ],
+      response_format: { type: 'json_object' }
+    })
 
-Transcript:
-${transcript}`
-
-    const result = await model.generateContent(prompt)
-    const responseText = result.response.text()
-    const cleaned = responseText.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '')
-    const parsed = JSON.parse(cleaned) as MeetingNotes
+    const responseText = response.choices[0].message.content || '{}'
+    const parsed = JSON.parse(responseText) as MeetingNotes
 
     return {
       notes: parsed,

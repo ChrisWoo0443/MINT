@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { MeetingCard } from './MeetingCard'
 
@@ -21,16 +21,22 @@ export function MeetingList({
 }: MeetingListProps): React.JSX.Element {
   const [meetings, setMeetings] = useState<Meeting[]>([])
 
-  useEffect(() => {
-    loadMeetings()
-  }, [])
-
-  const loadMeetings = async (): Promise<void> => {
+  const loadMeetings = useCallback(async (): Promise<void> => {
     const { data } = await supabase
       .from('meetings')
       .select('*')
       .order('started_at', { ascending: false })
     if (data) setMeetings(data)
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadMeetings()
+  }, [loadMeetings])
+
+  const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
+    await supabase.from('meetings').delete().eq('id', meetingId)
+    setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
   }
 
   return (
@@ -47,6 +53,7 @@ export function MeetingList({
             key={meeting.id}
             meeting={meeting}
             onClick={() => onSelectMeeting(meeting.id)}
+            onDelete={handleDeleteMeeting}
           />
         ))
       )}
