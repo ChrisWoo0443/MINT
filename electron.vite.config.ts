@@ -13,10 +13,6 @@ export default defineConfig({
       }
     },
     define: {
-      'process.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || ''),
-      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(
-        process.env.VITE_SUPABASE_ANON_KEY || ''
-      ),
       'process.env.DEEPGRAM_API_KEY': JSON.stringify(process.env.DEEPGRAM_API_KEY || ''),
       'process.env.OPENAI_API_KEY': JSON.stringify(process.env.OPENAI_API_KEY || '')
     }
