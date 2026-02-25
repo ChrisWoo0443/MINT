@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 
+interface TagDefinition {
+  id: string
+  name: string
+  color: string
+}
+
 interface SettingsProps {
   onRerunOnboarding: () => void
   onResetApp: () => void
@@ -25,6 +31,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   )
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [tags, setTags] = useState<TagDefinition[]>([])
 
   const loadDevices = useCallback(async (): Promise<void> => {
     const devices = await navigator.mediaDevices.enumerateDevices()
@@ -39,6 +46,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDevices()
     window.mintAPI.getStoragePath().then(setStoragePath)
+    window.mintAPI.getTags().then(setTags)
   }, [loadDevices])
 
   const loadOllamaModels = useCallback(async (url: string): Promise<void> => {
@@ -81,6 +89,12 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
       setStoragePath(picked)
       await window.mintAPI.setStoragePath(picked)
     }
+  }
+
+  const handleTagRename = async (tagId: string, newName: string): Promise<void> => {
+    const updatedTags = tags.map((t) => (t.id === tagId ? { ...t, name: newName } : t))
+    setTags(updatedTags)
+    await window.mintAPI.saveTags(updatedTags)
   }
 
   return (
@@ -202,6 +216,22 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
             )}
           </>
         )}
+      </section>
+
+      <section>
+        <h3>Tags</h3>
+        <div className="tags-settings-list">
+          {tags.map((tag) => (
+            <div key={tag.id} className="tag-setting-row">
+              <span className="tag-dot-large" style={{ background: tag.color }} />
+              <input
+                type="text"
+                value={tag.name}
+                onChange={(e) => handleTagRename(tag.id, e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
       </section>
 
       <section>
