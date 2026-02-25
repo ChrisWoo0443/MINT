@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { MeetingCard } from './MeetingCard'
 
 interface TagDefinition {
@@ -21,6 +21,25 @@ interface MeetingListProps {
   onStartRecording: () => void
 }
 
+function getDateSection(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfYesterday = new Date(startOfToday.getTime() - 86400000)
+  const startOfWeek = new Date(startOfToday)
+  startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay())
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  if (date >= startOfToday) return 'Today'
+  if (date >= startOfYesterday) return 'Yesterday'
+  if (date >= startOfWeek) return 'This Week'
+  if (date >= startOfMonth) return 'This Month'
+  return 'Older'
+}
+
+const SECTION_ORDER = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older']
+
 export function MeetingList({
   onSelectMeeting,
   onStartRecording
@@ -41,6 +60,19 @@ export function MeetingList({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
+
+  const groupedMeetings = useMemo(() => {
+    const groups = new Map<string, Meeting[]>()
+    for (const meeting of meetings) {
+      const section = getDateSection(meeting.startedAt)
+      const list = groups.get(section) || []
+      list.push(meeting)
+      groups.set(section, list)
+    }
+    return SECTION_ORDER
+      .filter((section) => groups.has(section))
+      .map((section) => ({ section, meetings: groups.get(section)! }))
+  }, [meetings])
 
   const handleDeleteMeeting = async (meetingId: string): Promise<void> => {
     await window.mintAPI.deleteMeeting(meetingId)
@@ -67,15 +99,23 @@ export function MeetingList({
       {meetings.length === 0 ? (
         <p>No meetings yet. Start your first recording.</p>
       ) : (
-        meetings.map((meeting) => (
-          <MeetingCard
-            key={meeting.id}
-            meeting={meeting}
-            availableTags={availableTags}
-            onClick={() => onSelectMeeting(meeting.id)}
-            onDelete={handleDeleteMeeting}
-            onToggleTag={handleToggleTag}
-          />
+        groupedMeetings.map(({ section, meetings: sectionMeetings }) => (
+          <div key={section} className="meeting-section">
+            <div className="meeting-section-header">
+              <span className="meeting-section-label">{section}</span>
+              <span className="meeting-section-count">{sectionMeetings.length}</span>
+            </div>
+            {sectionMeetings.map((meeting) => (
+              <MeetingCard
+                key={meeting.id}
+                meeting={meeting}
+                availableTags={availableTags}
+                onClick={() => onSelectMeeting(meeting.id)}
+                onDelete={handleDeleteMeeting}
+                onToggleTag={handleToggleTag}
+              />
+            ))}
+          </div>
         ))
       )}
     </div>

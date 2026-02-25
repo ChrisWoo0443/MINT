@@ -354,6 +354,35 @@ label {
   padding: 48px 0;
 }
 
+/* ----- Date Sections ----- */
+.meeting-section {
+  margin-bottom: 20px;
+}
+
+.meeting-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.meeting-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-tertiary);
+}
+
+.meeting-section-count {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-elevated);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
 /* ============================================================
    MEETING CARD
    ============================================================ */
