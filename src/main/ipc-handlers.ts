@@ -167,11 +167,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     // Will be implemented in a future task
   })
 
+  const allowedExternalUrls = [
+    'https://existential.audio/blackhole/',
+    'x-apple.systempreferences:com.apple.Sound-Settings.extension'
+  ]
+
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
+    if (!allowedExternalUrls.includes(url)) {
+      console.warn(`[MINT] Blocked openExternal for URL: ${url}`)
+      return
+    }
     await shell.openExternal(url)
   })
 
+  const allowedAppPaths = ['/Applications/Utilities/Audio MIDI Setup.app']
+
   ipcMain.handle('shell:openApp', async (_event, appPath: string) => {
+    if (!allowedAppPaths.includes(appPath)) {
+      console.warn(`[MINT] Blocked openPath for path: ${appPath}`)
+      return
+    }
     await shell.openPath(appPath)
   })
 }

@@ -8,7 +8,9 @@ interface SettingsProps {
 export function Settings({ onRerunSetup }: SettingsProps): React.JSX.Element {
   const { user, signOut } = useAuth()
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
-  const [selectedDevice, setSelectedDevice] = useState<string>('')
+  const [selectedDevice, setSelectedDevice] = useState<string>(
+    () => localStorage.getItem('micDeviceId') || ''
+  )
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
   const [blackholeDetected, setBlackholeDetected] = useState(false)
 

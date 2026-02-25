@@ -52,6 +52,7 @@ function AppContent(): React.JSX.Element {
         <Settings
           onRerunSetup={() => {
             localStorage.removeItem('onboardingComplete')
+            localStorage.removeItem('blackholeDeviceId')
             setOnboardingComplete(false)
           }}
         />
@@ -78,6 +79,7 @@ function AppContent(): React.JSX.Element {
               title: defaultTitle,
               accessToken: session.access_token,
               userName,
+              micDeviceId: localStorage.getItem('micDeviceId') || undefined,
               blackholeDeviceId: localStorage.getItem('blackholeDeviceId') || ''
             })
             setView('recording')

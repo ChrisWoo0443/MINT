@@ -21,26 +21,36 @@ export function AudioSetup({ onComplete }: AudioSetupProps): React.JSX.Element {
   const handleVerifyBlackHole = async (): Promise<void> => {
     setVerifying(true)
     setError('')
-    const result = await detectBlackHole()
-    setVerifying(false)
-    if (result.installed) {
-      localStorage.setItem('blackholeDeviceId', result.deviceId)
-      setStep(step + 1)
-    } else {
-      setError('BlackHole was not detected. Please install it and try again.')
+    try {
+      const result = await detectBlackHole()
+      if (result.installed) {
+        localStorage.setItem('blackholeDeviceId', result.deviceId)
+        setStep((s) => s + 1)
+      } else {
+        setError('BlackHole was not detected. Please install it and try again.')
+      }
+    } catch {
+      setError('Failed to check for audio devices. Please check permissions.')
+    } finally {
+      setVerifying(false)
     }
   }
 
   const handleFinalVerify = async (): Promise<void> => {
     setVerifying(true)
     setError('')
-    const result = await detectBlackHole()
-    setVerifying(false)
-    if (result.installed) {
-      localStorage.setItem('blackholeDeviceId', result.deviceId)
-      onComplete(displayName)
-    } else {
-      setError('BlackHole was not detected. Please check your audio setup and try again.')
+    try {
+      const result = await detectBlackHole()
+      if (result.installed) {
+        localStorage.setItem('blackholeDeviceId', result.deviceId)
+        onComplete(displayName)
+      } else {
+        setError('BlackHole was not detected. Please check your audio setup and try again.')
+      }
+    } catch {
+      setError('Failed to check for audio devices. Please check permissions.')
+    } finally {
+      setVerifying(false)
     }
   }
 
