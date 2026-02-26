@@ -1138,6 +1138,29 @@ label {
   margin-bottom: 16px;
 }
 
+.setup-tagline {
+  font-size: 15px !important;
+  color: var(--color-text-secondary) !important;
+  margin-bottom: 8px !important;
+  text-align: center;
+}
+
+.setup-tagline strong {
+  color: var(--color-accent);
+}
+
+.setup-disclaimer {
+  font-size: 12px !important;
+  color: var(--color-text-tertiary) !important;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 4px !important;
+  margin-bottom: 0 !important;
+  line-height: 1.5 !important;
+}
+
 .setup-hint,
 .settings-hint {
   font-size: 12px !important;
