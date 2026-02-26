@@ -69,31 +69,15 @@ Everything is stored locally on your machine as Markdown files — no cloud stor
 5. **Stop & save** — Transcript saved as Markdown to your chosen storage folder
 6. **Generate notes** — Hit the generate button to produce structured notes via GPT-4o or Ollama
 
-## Getting Started
+## Download
+
+Grab the latest `.dmg` from the [Releases](https://github.com/ChrisWoo0443/MINT/releases) page. Open it and drag MINT to your Applications folder.
 
 ### Prerequisites
 
 - **macOS** (required — uses macOS-specific audio capture)
-- **Node.js** 18+
 - **Deepgram API key** ([get one free](https://console.deepgram.com))
 - **OpenAI API key** (optional — can use Ollama instead)
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-username/mint.git
-cd mint
-
-# Install dependencies
-npm install
-```
-
-### Development
-
-```bash
-npm run dev          # Start with hot reload
-```
 
 ### API Keys
 
@@ -102,6 +86,20 @@ No `.env` file or manual configuration needed. Add your API keys directly in the
 1. Open MINT and go to **Settings** from the sidebar
 2. Enter your **Deepgram API key** under Transcription
 3. Enter your **OpenAI API key** under Notes Generation (or configure Ollama instead)
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/ChrisWoo0443/MINT.git
+cd MINT
+
+# Install dependencies
+npm install
+
+# Start with hot reload
+npm run dev
+```
 
 ### Build
 
