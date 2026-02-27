@@ -63,6 +63,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     localStorageService.getNote(meetingId)
   )
 
+  ipcMain.handle(
+    'meetings:saveNotes',
+    async (
+      _event,
+      args: {
+        meetingId: string
+        summary: string
+        decisions: string[]
+        actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
+      }
+    ) => {
+      await localStorageService.saveNotes(
+        args.meetingId,
+        args.summary,
+        args.decisions,
+        args.actionItems
+      )
+    }
+  )
+
   ipcMain.handle('meetings:getTranscripts', async (_event, meetingId: string) =>
     localStorageService.getTranscripts(meetingId)
   )
