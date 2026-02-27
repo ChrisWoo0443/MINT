@@ -1477,3 +1477,129 @@ label {
 .overlay-stop-button:hover {
   background: var(--color-danger-hover);
 }
+
+/* ----- Editable Notes ----- */
+
+.editable-summary {
+  width: 100%;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+
+.editable-summary:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.editable-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editable-list-item input[type="text"] {
+  flex: 1;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.editable-list-item input[type="text"]:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.remove-item-button {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color var(--transition-fast);
+}
+
+.remove-item-button:hover {
+  color: var(--color-danger);
+}
+
+.add-item-button {
+  background: none;
+  border: 1px dashed var(--color-border-strong);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all var(--transition-fast);
+}
+
+.add-item-button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.editable-action-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-task-input {
+  flex: 1;
+  min-width: 150px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.action-task-input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.action-meta-input {
+  width: 100px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+.action-meta-input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.edited-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-status-processing);
+  background: rgba(245, 158, 11, 0.12);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  margin-left: 8px;
+  vertical-align: middle;
+}
