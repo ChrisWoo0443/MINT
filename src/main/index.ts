@@ -92,10 +92,15 @@ app.whenReady().then(() => {
   registerIpcHandlers(mainWindow)
 
   ipcMain.on('overlay:show', () => {
-    if (!overlayWindow) {
-      overlayWindow = createOverlayWindow()
+    try {
+      if (!overlayWindow) {
+        overlayWindow = createOverlayWindow()
+      }
+      overlayWindow?.showInactive()
+    } catch (error) {
+      console.error('Failed to show overlay:', error)
+      overlayWindow = null
     }
-    overlayWindow.showInactive()
   })
 
   ipcMain.on('overlay:hide', () => {
