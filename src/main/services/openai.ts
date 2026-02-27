@@ -31,13 +31,7 @@ export class OpenAIService {
     }
   }
 
-  async generateNotes(
-    transcript: string,
-    customPrompt?: string
-  ): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
-    const customSection = customPrompt
-      ? `\n\nAdditional instructions from the user:\n${customPrompt}`
-      : ''
+  async generateNotes(transcript: string): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
     const useJsonFormat = this.model === 'gpt-4o'
 
     const response = await this.client.chat.completions.create({
@@ -59,7 +53,7 @@ Rules:
 - Extract every decision that was made, even implicit ones
 - Extract every action item, task, or follow-up mentioned
 - If an assignee or due date is mentioned, include them
-- Return ONLY valid JSON, no markdown fences${customSection}`
+- Return ONLY valid JSON, no markdown fences`
         },
         {
           role: 'user',

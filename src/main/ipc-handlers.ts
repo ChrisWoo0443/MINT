@@ -63,26 +63,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     localStorageService.getNote(meetingId)
   )
 
-  ipcMain.handle(
-    'meetings:saveNotes',
-    async (
-      _event,
-      args: {
-        meetingId: string
-        summary: string
-        decisions: string[]
-        actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
-      }
-    ) => {
-      await localStorageService.saveNotes(
-        args.meetingId,
-        args.summary,
-        args.decisions,
-        args.actionItems
-      )
-    }
-  )
-
   ipcMain.handle('meetings:getTranscripts', async (_event, meetingId: string) =>
     localStorageService.getTranscripts(meetingId)
   )
@@ -198,7 +178,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         notesProvider?: 'openai' | 'ollama'
         ollamaUrl?: string
         ollamaModel?: string
-        customPrompt?: string
       }
     ) => {
       const { meetingId } = args
@@ -206,7 +185,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       const notesProvider = args.notesProvider || 'openai'
       const ollamaUrl = args.ollamaUrl || 'http://localhost:11434'
       const ollamaModel = args.ollamaModel || ''
-      const customPrompt = args.customPrompt || ''
 
       try {
         await localStorageService.updateMeetingStatus(meetingId, 'processing')
@@ -230,7 +208,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
                 ollamaModel: ollamaModel
               })
             : new OpenAIService({ provider: 'openai', apiKey: openaiApiKey })
-        const { notes } = await openaiService.generateNotes(fullTranscript, customPrompt)
+        const { notes } = await openaiService.generateNotes(fullTranscript)
 
         await localStorageService.saveNotes(
           meetingId,

@@ -58,12 +58,6 @@ interface MintAPI {
   deleteMeeting: (meetingId: string) => Promise<void>
   renameMeeting: (meetingId: string, newTitle: string) => Promise<void>
   getMeetingNotes: (meetingId: string) => Promise<NoteData | null>
-  saveNotes: (args: {
-    meetingId: string
-    summary: string
-    decisions: string[]
-    actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
-  }) => Promise<void>
   getMeetingTranscripts: (meetingId: string) => Promise<TranscriptEntryData[]>
   getStoragePath: () => Promise<string>
   setStoragePath: (newPath: string) => Promise<void>
@@ -77,7 +71,6 @@ interface MintAPI {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
-    customPrompt?: string
   }) => Promise<NoteData>
   showOverlay: () => void
   hideOverlay: () => void
@@ -123,7 +116,6 @@ const mintAPI: MintAPI = {
   renameMeeting: (meetingId: string, newTitle: string) =>
     ipcRenderer.invoke('meetings:rename', meetingId, newTitle),
   getMeetingNotes: (meetingId: string) => ipcRenderer.invoke('meetings:getNotes', meetingId),
-  saveNotes: (args) => ipcRenderer.invoke('meetings:saveNotes', args),
   getMeetingTranscripts: (meetingId: string) =>
     ipcRenderer.invoke('meetings:getTranscripts', meetingId),
   getStoragePath: () => ipcRenderer.invoke('storage:getPath'),
@@ -139,7 +131,6 @@ const mintAPI: MintAPI = {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
-    customPrompt?: string
   }) => ipcRenderer.invoke('meetings:generateNotes', args),
 
   showOverlay: () => ipcRenderer.send('overlay:show'),

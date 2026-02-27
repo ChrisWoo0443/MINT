@@ -60,12 +60,6 @@ interface MintAPI {
   deleteMeeting: (meetingId: string) => Promise<void>
   renameMeeting: (meetingId: string, newTitle: string) => Promise<void>
   getMeetingNotes: (meetingId: string) => Promise<NoteData | null>
-  saveNotes: (args: {
-    meetingId: string
-    summary: string
-    decisions: string[]
-    actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
-  }) => Promise<void>
   getMeetingTranscripts: (meetingId: string) => Promise<TranscriptEntryData[]>
   getStoragePath: () => Promise<string>
   setStoragePath: (newPath: string) => Promise<void>
@@ -79,7 +73,6 @@ interface MintAPI {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
-    customPrompt?: string
   }) => Promise<NoteData>
   showOverlay: () => void
   hideOverlay: () => void
