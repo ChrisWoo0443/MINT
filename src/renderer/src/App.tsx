@@ -38,9 +38,18 @@ function MainApp(): React.JSX.Element {
       window.mintAPI.hideOverlay()
     })
 
+    const cleanupStatus = window.mintAPI.onRecordingStatus((status) => {
+      if (status === 'stopped') {
+        setIsRecording(false)
+        setMeetingListKey((k) => k + 1)
+        setView('meetings')
+      }
+    })
+
     return () => {
       cleanupBlur()
       cleanupFocus()
+      cleanupStatus()
     }
   }, [isRecording])
 

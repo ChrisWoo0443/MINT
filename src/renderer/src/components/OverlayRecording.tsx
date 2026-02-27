@@ -44,8 +44,8 @@ export function OverlayRecording(): React.JSX.Element {
     return `${minutes}:${remainingSeconds}`
   }
 
-  const handleStop = (): void => {
-    window.mintAPI.stopRecording()
+  const handleStop = async (): Promise<void> => {
+    await window.mintAPI.stopRecording()
     window.mintAPI.destroyOverlay()
   }
 

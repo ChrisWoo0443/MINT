@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
+import { ipcMain, BrowserWindow, dialog, shell, webContents } from 'electron'
 import { AudioCaptureService } from './services/audio-capture'
 import { AudioTeeService } from './services/audiotee'
 import { DeepgramService } from './services/deepgram'
@@ -117,7 +117,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           timestampEnd: number
           isFinal: boolean
         }): Promise<void> => {
-          mainWindow.webContents.send('transcript:chunk', result)
+          for (const wc of webContents.getAllWebContents()) {
+            wc.send('transcript:chunk', result)
+          }
 
           if (result.isFinal && currentMeetingId) {
             try {
@@ -154,13 +156,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           console.warn('[MINT] System audio Deepgram stream unavailable:', systemError)
         }
 
-        mainWindow.webContents.send('recording:status', 'recording')
+        for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'recording')
         const micDeviceId = args.micDeviceId || 'default'
         audioCaptureService.startCapture(mainWindow, { micDeviceId })
       } catch (startError) {
         console.error('Failed to start recording:', startError)
         currentMeetingId = null
-        mainWindow.webContents.send('recording:status', 'error')
+        for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'error')
         throw startError
       }
     }
@@ -173,7 +175,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     systemDeepgramService.stopStreaming()
 
     if (!currentMeetingId) {
-      mainWindow.webContents.send('recording:status', 'stopped')
+      for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'stopped')
       return
     }
 
@@ -183,7 +185,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     localStorageService.clearTranscriptBuffer(meetingId)
     await localStorageService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
 
-    mainWindow.webContents.send('recording:status', 'stopped')
+    for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'stopped')
   })
 
   ipcMain.handle(
