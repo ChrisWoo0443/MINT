@@ -72,6 +72,11 @@ interface MintAPI {
     ollamaUrl?: string
     ollamaModel?: string
   }) => Promise<NoteData>
+  showOverlay: () => void
+  hideOverlay: () => void
+  destroyOverlay: () => void
+  onWindowBlur: (callback: () => void) => () => void
+  onWindowFocus: (callback: () => void) => () => void
 }
 
 const mintAPI: MintAPI = {
@@ -126,7 +131,23 @@ const mintAPI: MintAPI = {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
-  }) => ipcRenderer.invoke('meetings:generateNotes', args)
+  }) => ipcRenderer.invoke('meetings:generateNotes', args),
+
+  showOverlay: () => ipcRenderer.send('overlay:show'),
+  hideOverlay: () => ipcRenderer.send('overlay:hide'),
+  destroyOverlay: () => ipcRenderer.send('overlay:destroy'),
+
+  onWindowBlur: (callback: () => void) => {
+    const listener = (): void => { callback() }
+    ipcRenderer.on('window:blur', listener)
+    return () => { ipcRenderer.removeListener('window:blur', listener) }
+  },
+
+  onWindowFocus: (callback: () => void) => {
+    const listener = (): void => { callback() }
+    ipcRenderer.on('window:focus', listener)
+    return () => { ipcRenderer.removeListener('window:focus', listener) }
+  }
 }
 
 // --- Audio capture (renderer-side for macOS BlackHole + microphone) ---

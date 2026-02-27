@@ -74,6 +74,11 @@ interface MintAPI {
     ollamaUrl?: string
     ollamaModel?: string
   }) => Promise<NoteData>
+  showOverlay: () => void
+  hideOverlay: () => void
+  destroyOverlay: () => void
+  onWindowBlur: (callback: () => void) => () => void
+  onWindowFocus: (callback: () => void) => () => void
 }
 
 declare global {
