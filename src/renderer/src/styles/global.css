@@ -1362,3 +1362,118 @@ label {
 .tag-setting-row input {
   flex: 1;
 }
+
+/* ----- Overlay Recording Window ----- */
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.overlay-recording {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: rgba(26, 26, 30, 0.92);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  padding: 12px;
+  gap: 8px;
+  -webkit-app-region: drag;
+}
+
+.overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.overlay-recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-status-recording);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.overlay-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-status-recording);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.overlay-timer {
+  margin-left: auto;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.overlay-transcript {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.overlay-entry {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 0;
+}
+
+.overlay-entry.interim {
+  opacity: 0.5;
+  border-left: 2px dashed var(--color-border-strong);
+  padding-left: 6px;
+}
+
+.overlay-speaker {
+  font-weight: 600;
+  color: var(--color-accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.overlay-speaker::after {
+  content: ':';
+}
+
+.overlay-text {
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overlay-footer {
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+
+.overlay-stop-button {
+  width: 100%;
+  padding: 6px 12px;
+  background: var(--color-danger);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.overlay-stop-button:hover {
+  background: var(--color-danger-hover);
+}
