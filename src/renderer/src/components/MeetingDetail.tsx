@@ -53,7 +53,9 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
+  const [isEdited, setIsEdited] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const loadMeetingData = useCallback(async (): Promise<void> => {
     const [meetingData, notesData, transcriptsData, tagsData] = await Promise.all([
@@ -72,6 +74,27 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   useEffect(() => {
     loadMeetingData()
   }, [loadMeetingData])
+
+  const saveNotesDebounced = useCallback(
+    (updatedNotes: Note) => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = setTimeout(async () => {
+        await window.mintAPI.saveNotes({
+          meetingId,
+          summary: updatedNotes.summary,
+          decisions: updatedNotes.decisions,
+          actionItems: updatedNotes.actionItems
+        })
+      }, 500)
+    },
+    [meetingId]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (isEditingTitle) titleInputRef.current?.select()
@@ -214,44 +237,174 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
           ) : notes ? (
             <div className="summary-content">
               <section className="summary-section">
-                <h3>Executive Summary</h3>
-                <p>{notes.summary}</p>
+                <h3>
+                  Executive Summary
+                  {isEdited && <span className="edited-badge">Edited</span>}
+                </h3>
+                <textarea
+                  className="editable-summary"
+                  value={notes.summary}
+                  onChange={(e) => {
+                    const updated = { ...notes, summary: e.target.value }
+                    setNotes(updated)
+                    setIsEdited(true)
+                    saveNotesDebounced(updated)
+                  }}
+                  rows={6}
+                />
               </section>
 
-              {notes.decisions.length > 0 && (
-                <section className="summary-section">
-                  <h3>Decisions</h3>
-                  <ul>
-                    {notes.decisions.map((decision, index) => (
-                      <li key={index}>{decision}</li>
-                    ))}
-                  </ul>
-                </section>
-              )}
+              <section className="summary-section">
+                <h3>Decisions</h3>
+                <ul>
+                  {notes.decisions.map((decision, index) => (
+                    <li key={index} className="editable-list-item">
+                      <input
+                        type="text"
+                        value={decision}
+                        onChange={(e) => {
+                          const updated = {
+                            ...notes,
+                            decisions: notes.decisions.map((d, i) =>
+                              i === index ? e.target.value : d
+                            )
+                          }
+                          setNotes(updated)
+                          setIsEdited(true)
+                          saveNotesDebounced(updated)
+                        }}
+                      />
+                      <button
+                        className="remove-item-button"
+                        onClick={() => {
+                          const updated = {
+                            ...notes,
+                            decisions: notes.decisions.filter((_, i) => i !== index)
+                          }
+                          setNotes(updated)
+                          setIsEdited(true)
+                          saveNotesDebounced(updated)
+                        }}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  className="add-item-button"
+                  onClick={() => {
+                    const updated = { ...notes, decisions: [...notes.decisions, ''] }
+                    setNotes(updated)
+                    setIsEdited(true)
+                  }}
+                >
+                  + Add Decision
+                </button>
+              </section>
 
-              {notes.actionItems.length > 0 && (
-                <section className="summary-section">
-                  <h3>Action Items</h3>
-                  <ul className="action-items">
-                    {notes.actionItems.map((item, index) => (
-                      <li key={index} className="action-item">
-                        <label>
-                          <input type="checkbox" />
-                          <span>{item.task}</span>
-                          {item.assignee && (
-                            <span className="action-assignee"> — {item.assignee}</span>
-                          )}
-                          {item.dueDate && (
-                            <span className="action-due-date"> (due: {item.dueDate})</span>
-                          )}
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
+              <section className="summary-section">
+                <h3>Action Items</h3>
+                <ul className="action-items">
+                  {notes.actionItems.map((item, index) => (
+                    <li key={index} className="action-item editable-action-item">
+                      <label>
+                        <input type="checkbox" />
+                        <input
+                          type="text"
+                          className="action-task-input"
+                          value={item.task}
+                          onChange={(e) => {
+                            const updated = {
+                              ...notes,
+                              actionItems: notes.actionItems.map((ai, i) =>
+                                i === index ? { ...ai, task: e.target.value } : ai
+                              )
+                            }
+                            setNotes(updated)
+                            setIsEdited(true)
+                            saveNotesDebounced(updated)
+                          }}
+                        />
+                      </label>
+                      <input
+                        type="text"
+                        className="action-meta-input"
+                        placeholder="Assignee"
+                        value={item.assignee || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...notes,
+                            actionItems: notes.actionItems.map((ai, i) =>
+                              i === index ? { ...ai, assignee: e.target.value || undefined } : ai
+                            )
+                          }
+                          setNotes(updated)
+                          setIsEdited(true)
+                          saveNotesDebounced(updated)
+                        }}
+                      />
+                      <input
+                        type="text"
+                        className="action-meta-input"
+                        placeholder="Due date"
+                        value={item.dueDate || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...notes,
+                            actionItems: notes.actionItems.map((ai, i) =>
+                              i === index ? { ...ai, dueDate: e.target.value || undefined } : ai
+                            )
+                          }
+                          setNotes(updated)
+                          setIsEdited(true)
+                          saveNotesDebounced(updated)
+                        }}
+                      />
+                      <button
+                        className="remove-item-button"
+                        onClick={() => {
+                          const updated = {
+                            ...notes,
+                            actionItems: notes.actionItems.filter((_, i) => i !== index)
+                          }
+                          setNotes(updated)
+                          setIsEdited(true)
+                          saveNotesDebounced(updated)
+                        }}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  className="add-item-button"
+                  onClick={() => {
+                    const updated = {
+                      ...notes,
+                      actionItems: [...notes.actionItems, { task: '' }]
+                    }
+                    setNotes(updated)
+                    setIsEdited(true)
+                  }}
+                >
+                  + Add Action Item
+                </button>
+              </section>
 
-              <button className="generate-notes-button" onClick={handleGenerateNotes}>
+              <button
+                className="generate-notes-button"
+                onClick={() => {
+                  if (
+                    isEdited &&
+                    !window.confirm('Regenerating will overwrite your edits. Continue?')
+                  )
+                    return
+                  handleGenerateNotes()
+                  setIsEdited(false)
+                }}
+              >
                 Regenerate Notes
               </button>
             </div>
