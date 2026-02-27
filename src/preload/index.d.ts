@@ -69,6 +69,11 @@ interface MintAPI {
   getTags: () => Promise<TagDefinition[]>
   saveTags: (tags: TagDefinition[]) => Promise<void>
   setMeetingTags: (meetingId: string, tags: string[]) => Promise<void>
+  showOverlay: () => void
+  hideOverlay: () => void
+  destroyOverlay: () => void
+  onWindowBlur: (callback: () => void) => () => void
+  onWindowFocus: (callback: () => void) => () => void
 }
 
 declare global {

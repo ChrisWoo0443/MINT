@@ -1,19 +1,43 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MeetingList } from './components/MeetingList'
 import { MeetingDetail } from './components/MeetingDetail'
 import { LiveRecording } from './components/LiveRecording'
+import { OverlayRecording } from './components/OverlayRecording'
 import { Settings } from './components/Settings'
 import { AudioSetup } from './components/AudioSetup'
 
 type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
 function App(): React.JSX.Element {
+  const isOverlay = new URLSearchParams(window.location.search).get('overlay') === '1'
+  if (isOverlay) {
+    return <OverlayRecording />
+  }
+
   const [view, setView] = useState<View>('meetings')
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
   const [meetingListKey, setMeetingListKey] = useState(0)
+  const [isRecording, setIsRecording] = useState(false)
   const [onboardingComplete, setOnboardingComplete] = useState(
     () => localStorage.getItem('onboardingComplete') === 'true'
   )
+
+  useEffect(() => {
+    if (!isRecording) return
+
+    const cleanupBlur = window.mintAPI.onWindowBlur(() => {
+      window.mintAPI.showOverlay()
+    })
+
+    const cleanupFocus = window.mintAPI.onWindowFocus(() => {
+      window.mintAPI.hideOverlay()
+    })
+
+    return () => {
+      cleanupBlur()
+      cleanupFocus()
+    }
+  }, [isRecording])
 
   const handleOnboardingComplete = (displayName: string): void => {
     localStorage.setItem('displayName', displayName)
@@ -31,6 +55,8 @@ function App(): React.JSX.Element {
         <LiveRecording
           onStop={() => {
             window.mintAPI.stopRecording()
+            setIsRecording(false)
+            window.mintAPI.destroyOverlay()
             setMeetingListKey((k) => k + 1)
             setView('meetings')
           }}
@@ -79,6 +105,7 @@ function App(): React.JSX.Element {
               ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
               ollamaModel: localStorage.getItem('ollamaModel') || undefined
             })
+            setIsRecording(true)
             setView('recording')
           } catch (error) {
             console.error('Failed to start recording:', error)
