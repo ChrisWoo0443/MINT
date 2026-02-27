@@ -30,6 +30,9 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [tags, setTags] = useState<TagDefinition[]>([])
+  const [customPrompt, setCustomPrompt] = useState(
+    () => localStorage.getItem('notesCustomPrompt') || ''
+  )
 
   const loadDevices = useCallback(async (): Promise<void> => {
     const devices = await navigator.mediaDevices.enumerateDevices()
@@ -217,6 +220,25 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
             )}
           </>
         )}
+      </section>
+
+      <section>
+        <h3>Notes Style</h3>
+        <label htmlFor="custom-prompt">Custom Instructions</label>
+        <textarea
+          id="custom-prompt"
+          className="custom-prompt-textarea"
+          value={customPrompt}
+          onChange={(e) => {
+            setCustomPrompt(e.target.value)
+            localStorage.setItem('notesCustomPrompt', e.target.value)
+          }}
+          placeholder="e.g., Focus on technical decisions and code changes. Extract specific deadlines mentioned."
+          rows={4}
+        />
+        <p className="settings-hint">
+          These instructions guide how meeting notes are generated. Leave empty for default behavior.
+        </p>
       </section>
 
       <section>
