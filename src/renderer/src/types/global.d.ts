@@ -79,6 +79,7 @@ interface MintAPI {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
+    customPrompt?: string
   }) => Promise<NoteData>
   showOverlay: () => void
   hideOverlay: () => void

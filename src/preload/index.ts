@@ -77,6 +77,7 @@ interface MintAPI {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
+    customPrompt?: string
   }) => Promise<NoteData>
   showOverlay: () => void
   hideOverlay: () => void
@@ -138,6 +139,7 @@ const mintAPI: MintAPI = {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
+    customPrompt?: string
   }) => ipcRenderer.invoke('meetings:generateNotes', args),
 
   showOverlay: () => ipcRenderer.send('overlay:show'),

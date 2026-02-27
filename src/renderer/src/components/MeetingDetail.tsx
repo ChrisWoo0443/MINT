@@ -141,7 +141,8 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
         openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
         notesProvider,
         ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
-        ollamaModel: localStorage.getItem('ollamaModel') || undefined
+        ollamaModel: localStorage.getItem('ollamaModel') || undefined,
+        customPrompt: localStorage.getItem('notesCustomPrompt') || undefined
       })
       setNotes(generatedNotes)
       setMeeting({ ...meeting, status: 'completed' })
