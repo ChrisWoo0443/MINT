@@ -8,12 +8,17 @@ import { AudioSetup } from './components/AudioSetup'
 
 type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
+const isOverlay = new URLSearchParams(window.location.search).get('overlay') === '1'
+
 function App(): React.JSX.Element {
-  const isOverlay = new URLSearchParams(window.location.search).get('overlay') === '1'
   if (isOverlay) {
     return <OverlayRecording />
   }
 
+  return <MainApp />
+}
+
+function MainApp(): React.JSX.Element {
   const [view, setView] = useState<View>('meetings')
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
   const [meetingListKey, setMeetingListKey] = useState(0)

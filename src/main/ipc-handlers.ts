@@ -181,11 +181,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     currentMeetingId = null
 
     localStorageService.clearTranscriptBuffer(meetingId)
-    await localStorageService.updateMeetingStatus(
-      meetingId,
-      'completed',
-      new Date().toISOString()
-    )
+    await localStorageService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
 
     mainWindow.webContents.send('recording:status', 'stopped')
   })

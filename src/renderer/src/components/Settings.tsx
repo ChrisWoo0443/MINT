@@ -237,7 +237,8 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
           rows={4}
         />
         <p className="settings-hint">
-          These instructions guide how meeting notes are generated. Leave empty for default behavior.
+          These instructions guide how meeting notes are generated. Leave empty for default
+          behavior.
         </p>
       </section>
 

@@ -147,15 +147,23 @@ const mintAPI: MintAPI = {
   destroyOverlay: () => ipcRenderer.send('overlay:destroy'),
 
   onWindowBlur: (callback: () => void) => {
-    const listener = (): void => { callback() }
+    const listener = (): void => {
+      callback()
+    }
     ipcRenderer.on('window:blur', listener)
-    return () => { ipcRenderer.removeListener('window:blur', listener) }
+    return () => {
+      ipcRenderer.removeListener('window:blur', listener)
+    }
   },
 
   onWindowFocus: (callback: () => void) => {
-    const listener = (): void => { callback() }
+    const listener = (): void => {
+      callback()
+    }
     ipcRenderer.on('window:focus', listener)
-    return () => { ipcRenderer.removeListener('window:focus', listener) }
+    return () => {
+      ipcRenderer.removeListener('window:focus', listener)
+    }
   }
 }
 
