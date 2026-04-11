@@ -48,7 +48,7 @@ describe('WhisperModelManager', () => {
     const fakeBody = Buffer.from('fake model bytes')
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      headers: new Map([['content-length', String(fakeBody.length)]]),
+      headers: new Headers([['content-length', String(fakeBody.length)]]),
       body: {
         getReader() {
           let yielded = false
@@ -73,6 +73,41 @@ describe('WhisperModelManager', () => {
     vi.unstubAllGlobals()
   })
 
+  it('invokes onProgress with byte counts during download', async () => {
+    const fakeBody = Buffer.from('sixteen bytes!!!')
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers([['content-length', String(fakeBody.length)]]),
+      body: {
+        getReader() {
+          let yielded = false
+          return {
+            async read() {
+              if (yielded) return { done: true, value: undefined }
+              yielded = true
+              return { done: false, value: fakeBody }
+            }
+          }
+        }
+      }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const progressSpy = vi.fn()
+    await manager.downloadModel('tiny.en', progressSpy)
+
+    expect(progressSpy).toHaveBeenCalled()
+    expect(progressSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'tiny.en',
+        bytesDownloaded: fakeBody.length,
+        bytesTotal: fakeBody.length
+      })
+    )
+
+    vi.unstubAllGlobals()
+  })
+
   it('deletes the .tmp file if the download throws', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('network down'))
     vi.stubGlobal('fetch', fetchMock)
@@ -93,7 +128,7 @@ describe('WhisperModelManager', () => {
     })
     const fetchMock = vi.fn().mockImplementation(async () => ({
       ok: true,
-      headers: new Map([['content-length', '16']]),
+      headers: new Headers([['content-length', '16']]),
       body: {
         getReader() {
           let yielded = false

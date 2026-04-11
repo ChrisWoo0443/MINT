@@ -1,6 +1,7 @@
 import { rename, unlink, stat } from 'node:fs/promises'
 import { createWriteStream, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { once } from 'node:events'
 
 export type ModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
 export type ModelStatus = 'not-downloaded' | 'downloading' | 'ready'
@@ -105,10 +106,7 @@ export class WhisperModelManager {
       if (!response.ok) {
         throw new Error(`Download failed: HTTP ${response.status}`)
       }
-      const contentLengthHeader =
-        typeof response.headers.get === 'function'
-          ? response.headers.get('content-length')
-          : (response.headers as unknown as Map<string, string>).get('content-length')
+      const contentLengthHeader = response.headers.get('content-length')
       const bytesTotal = contentLengthHeader ? Number(contentLengthHeader) : 0
 
       if (!response.body) {
@@ -124,9 +122,12 @@ export class WhisperModelManager {
         if (done) break
         if (value) {
           const chunk = Buffer.from(value)
-          writeStream.write(chunk)
+          const canContinue = writeStream.write(chunk)
           bytesDownloaded += chunk.length
           onProgress({ name, bytesDownloaded, bytesTotal })
+          if (!canContinue) {
+            await once(writeStream, 'drain')
+          }
         }
       }
 
