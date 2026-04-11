@@ -11,6 +11,9 @@ interface SettingsProps {
   onResetApp: () => void
 }
 
+type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
+type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
+
 export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): React.JSX.Element {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string>(
@@ -19,6 +22,14 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
   const [storagePath, setStoragePath] = useState('')
   const [deepgramKey, setDeepgramKey] = useState(() => localStorage.getItem('deepgramApiKey') || '')
+  const [transcriptionProvider, setTranscriptionProvider] = useState<'local' | 'deepgram'>(
+    () => (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram') || 'local'
+  )
+  const [whisperModel, setWhisperModel] = useState<WhisperModelName>(
+    () => (localStorage.getItem('whisperModel') as WhisperModelName) || 'small.en'
+  )
+  const [whisperStatus, setWhisperStatus] = useState<WhisperModelStatus>('not-downloaded')
+  const [whisperDownloadPct, setWhisperDownloadPct] = useState<number | null>(null)
   const [notesProvider, setNotesProvider] = useState<'openai' | 'ollama'>(
     () => (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || 'openai'
   )
@@ -76,6 +87,20 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     }
   }, [notesProvider, ollamaUrl, loadOllamaModels])
 
+  useEffect(() => {
+    window.mintAPI.whisper.getModelStatus(whisperModel).then(setWhisperStatus)
+  }, [whisperModel])
+
+  useEffect(() => {
+    const unsubscribe = window.mintAPI.whisper.onDownloadProgress((progress) => {
+      if (progress.name !== whisperModel) return
+      if (progress.bytesTotal > 0) {
+        setWhisperDownloadPct(Math.round((progress.bytesDownloaded / progress.bytesTotal) * 100))
+      }
+    })
+    return unsubscribe
+  }, [whisperModel])
+
   const handleDeviceChange = async (deviceId: string): Promise<void> => {
     setSelectedDevice(deviceId)
     localStorage.setItem('micDeviceId', deviceId)
@@ -99,6 +124,20 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     const updatedTags = tags.map((t) => (t.id === tagId ? { ...t, name: newName } : t))
     setTags(updatedTags)
     await window.mintAPI.saveTags(updatedTags)
+  }
+
+  const handleDownloadWhisperModel = async (): Promise<void> => {
+    setWhisperStatus('downloading')
+    setWhisperDownloadPct(0)
+    try {
+      await window.mintAPI.whisper.downloadModel(whisperModel)
+      setWhisperStatus('ready')
+    } catch (error) {
+      console.error('[MINT] Whisper download failed:', error)
+      setWhisperStatus('not-downloaded')
+    } finally {
+      setWhisperDownloadPct(null)
+    }
   }
 
   return (
@@ -135,17 +174,68 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
 
       <section>
         <h3>Transcription</h3>
-        <label htmlFor="deepgram-key">Deepgram API Key</label>
-        <input
-          id="deepgram-key"
-          type="password"
-          value={deepgramKey}
+        <label htmlFor="transcription-provider">Provider</label>
+        <select
+          id="transcription-provider"
+          value={transcriptionProvider}
           onChange={(e) => {
-            setDeepgramKey(e.target.value)
-            localStorage.setItem('deepgramApiKey', e.target.value)
+            const value = e.target.value as 'local' | 'deepgram'
+            setTranscriptionProvider(value)
+            localStorage.setItem('transcriptionProvider', value)
           }}
-          placeholder="Enter Deepgram API key"
-        />
+        >
+          <option value="local">Local (Private)</option>
+          <option value="deepgram">Deepgram (Cloud)</option>
+        </select>
+
+        {transcriptionProvider === 'local' && (
+          <>
+            <label htmlFor="whisper-model">Model</label>
+            <select
+              id="whisper-model"
+              value={whisperModel}
+              onChange={(e) => {
+                const value = e.target.value as WhisperModelName
+                setWhisperModel(value)
+                localStorage.setItem('whisperModel', value)
+              }}
+            >
+              <option value="tiny.en">tiny.en (75 MB)</option>
+              <option value="base.en">base.en (142 MB)</option>
+              <option value="small.en">small.en (466 MB) — recommended</option>
+              <option value="medium.en">medium.en (1.5 GB)</option>
+            </select>
+            <div className="whisper-status">
+              {whisperStatus === 'ready' && <span>Ready</span>}
+              {whisperStatus === 'not-downloaded' && (
+                <button type="button" onClick={handleDownloadWhisperModel}>
+                  Download
+                </button>
+              )}
+              {whisperStatus === 'downloading' && (
+                <span>
+                  Downloading {whisperDownloadPct !== null ? `${whisperDownloadPct}%` : ''}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+
+        {transcriptionProvider === 'deepgram' && (
+          <>
+            <label htmlFor="deepgram-key">Deepgram API Key</label>
+            <input
+              id="deepgram-key"
+              type="password"
+              value={deepgramKey}
+              onChange={(e) => {
+                setDeepgramKey(e.target.value)
+                localStorage.setItem('deepgramApiKey', e.target.value)
+              }}
+              placeholder="Enter Deepgram API key"
+            />
+          </>
+        )}
       </section>
 
       <section>
