@@ -1,9 +1,11 @@
-import { ipcMain, BrowserWindow, dialog, shell, webContents } from 'electron'
+import { app, ipcMain, BrowserWindow, dialog, shell, webContents } from 'electron'
+import { join } from 'node:path'
 import { AudioCaptureService } from './services/audio-capture'
 import { AudioTeeService } from './services/audiotee'
 import { DeepgramService } from './services/deepgram'
 import { OpenAIService } from './services/openai'
 import { LocalStorageService } from './services/local-storage'
+import { WhisperModelManager, type ModelName } from './services/whisper-model-manager'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   const audioCaptureService = new AudioCaptureService()
@@ -11,6 +13,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   const micDeepgramService = new DeepgramService()
   const systemDeepgramService = new DeepgramService()
   const localStorageService = new LocalStorageService()
+  const whisperModelManager = new WhisperModelManager(join(app.getPath('userData'), 'models'))
 
   let currentMeetingId: string | null = null
 
@@ -262,6 +265,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       return null
     }
   })
+
+  // --- Whisper model handlers ---
+
+  ipcMain.handle('whisper:listModels', async () => whisperModelManager.listModels())
+
+  ipcMain.handle('whisper:getModelStatus', async (_event, name: ModelName) =>
+    whisperModelManager.getModelStatus(name)
+  )
+
+  ipcMain.handle('whisper:downloadModel', async (_event, name: ModelName) => {
+    await whisperModelManager.downloadModel(name, (progress) => {
+      for (const wc of webContents.getAllWebContents()) {
+        wc.send('whisper:download:progress', progress)
+      }
+    })
+  })
+
+  ipcMain.handle('whisper:deleteModel', async (_event, name: ModelName) =>
+    whisperModelManager.deleteModel(name)
+  )
 
   // --- Shell handlers ---
 
