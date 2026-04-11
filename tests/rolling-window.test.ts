@@ -70,6 +70,32 @@ describe('reconcile', () => {
     expect(result.newState.committedAudioEndMs).toBe(0)
   })
 
+  it('appends to existing committedText when emitting additional finals', () => {
+    const state: ReconcileState = {
+      committedText: 'hello world',
+      committedAudioEndMs: 1000,
+      previousInterim: [
+        { text: 'today', endMs: 1400 },
+        { text: 'friend', endMs: 1800 }
+      ],
+      stabilityCounts: new Map([
+        ['0:today', 1],
+        ['1:friend', 1]
+      ])
+    }
+    const result = reconcile(state, [
+      { text: 'today', endMs: 1400 },
+      { text: 'friend', endMs: 1800 },
+      { text: 'how', endMs: 2200 }
+    ])
+    expect(result.finalEmissions).toHaveLength(1)
+    expect(result.finalEmissions[0].text).toBe('today friend')
+    expect(result.finalEmissions[0].endMs).toBe(1800)
+    expect(result.newState.committedText).toBe('hello world today friend')
+    expect(result.newState.committedAudioEndMs).toBe(1800)
+    expect(result.interim?.text).toBe('how')
+  })
+
   it('returns empty result when newWords is empty', () => {
     const state: ReconcileState = {
       committedText: '',

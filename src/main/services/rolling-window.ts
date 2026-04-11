@@ -23,6 +23,23 @@ export interface ReconcileResult {
 
 const STABILITY_THRESHOLD = 2
 
+/**
+ * Reconciles a new window of transcribed words against the prior window's state,
+ * promoting words that appeared unchanged in two consecutive windows to "final"
+ * emissions and treating the trailing remainder as an interim update.
+ *
+ * Calling contract: each call's `newWords` must correspond to audio starting AFTER
+ * `state.committedAudioEndMs`. Already-committed words must not reappear in
+ * `newWords`. Callers enforce this by slicing their audio buffer at
+ * `committedAudioEndMs` before running the next inference window. If this
+ * precondition is violated, `reconcile` will re-emit the committed prefix.
+ *
+ * Stability gate: a word is promoted from interim to final only when the new
+ * window extends the previous one (i.e. `newWords.length > previous.length`) AND
+ * the word appears at the same index with the same text and endMs. Same-length
+ * replacements are treated as corrections, not confirmations, so they never
+ * commit — preventing premature finalization of a word Whisper is still revising.
+ */
 export function reconcile(state: ReconcileState, newWords: WindowWord[]): ReconcileResult {
   if (newWords.length === 0) {
     return {
@@ -53,6 +70,7 @@ export function reconcile(state: ReconcileState, newWords: WindowWord[]): Reconc
     }
   }
 
+  // Seed stability=1 for words past the overlap so the next window can promote them.
   for (let i = 0; i < newWords.length; i++) {
     const key = `${i}:${newWords[i].text}`
     if (!newStability.has(key)) {
