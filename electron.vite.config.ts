@@ -9,7 +9,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['audiotee']
+        external: ['audiotee', 'smart-whisper']
       }
     },
     define: {
