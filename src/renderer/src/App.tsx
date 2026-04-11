@@ -10,6 +10,16 @@ type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
 const isOverlay = new URLSearchParams(window.location.search).get('overlay') === '1'
 
+const storedTranscriptionProvider = localStorage.getItem('transcriptionProvider')
+if (!storedTranscriptionProvider) {
+  const existingDeepgramKey = localStorage.getItem('deepgramApiKey')
+  if (existingDeepgramKey && existingDeepgramKey.trim().length > 0) {
+    localStorage.setItem('transcriptionProvider', 'deepgram')
+  } else {
+    localStorage.setItem('transcriptionProvider', 'local')
+  }
+}
+
 function App(): React.JSX.Element {
   if (isOverlay) {
     return <OverlayRecording />
