@@ -117,13 +117,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         }
 
         // Start mic transcription (always)
-        await micDeepgramService.startStreaming(deepgramApiKey, userName, handleTranscript)
+        await micDeepgramService.startStreaming({ deepgramApiKey }, userName, handleTranscript)
         console.log(`[MINT] Mic Deepgram stream started (speaker: "${userName}")`)
 
         // Start system audio transcription via AudioTee
         try {
           await systemDeepgramService.startStreaming(
-            deepgramApiKey,
+            { deepgramApiKey },
             'Meeting Users',
             handleTranscript
           )

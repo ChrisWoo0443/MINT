@@ -4,24 +4,27 @@ import {
   ListenLiveClient,
   type LiveTranscriptionEvent
 } from '@deepgram/sdk'
+import type {
+  TranscriptionService,
+  TranscriptionStartConfig,
+  TranscriptResult
+} from './transcription'
 
-export interface TranscriptResult {
-  speaker: string | null
-  content: string
-  timestampStart: number
-  timestampEnd: number
-  isFinal: boolean
-}
+export type { TranscriptResult } from './transcription'
 
-export class DeepgramService {
+export class DeepgramService implements TranscriptionService {
   private connection: ListenLiveClient | null = null
   private onResult: ((result: TranscriptResult) => void) | null = null
 
   async startStreaming(
-    apiKey: string,
+    config: TranscriptionStartConfig,
     speakerLabel: string,
     onResult: (result: TranscriptResult) => void
   ): Promise<void> {
+    const apiKey = config.deepgramApiKey
+    if (!apiKey) {
+      throw new Error('Deepgram API key is required')
+    }
     this.onResult = onResult
 
     const deepgram = createClient(apiKey)
@@ -44,7 +47,7 @@ export class DeepgramService {
       const startTime = words.length > 0 ? words[0].start : 0
       const endTime = words.length > 0 ? words[words.length - 1].end : 0
 
-      const result = {
+      const result: TranscriptResult = {
         speaker: speakerLabel,
         content: alternative.transcript,
         timestampStart: startTime,
