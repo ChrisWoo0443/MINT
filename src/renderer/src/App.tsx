@@ -108,11 +108,23 @@ function MainApp(): React.JSX.Element {
           try {
             const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
             const userName = localStorage.getItem('displayName') || 'You'
+            const transcriptionProvider =
+              (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram' | null) ??
+              'local'
+            const whisperModel =
+              (localStorage.getItem('whisperModel') as
+                | 'tiny.en'
+                | 'base.en'
+                | 'small.en'
+                | 'medium.en'
+                | null) ?? 'small.en'
             await window.mintAPI.startRecording({
               title: defaultTitle,
               userName,
               micDeviceId: localStorage.getItem('micDeviceId') || undefined,
               deepgramApiKey: localStorage.getItem('deepgramApiKey') || undefined,
+              transcriptionProvider,
+              whisperModel,
               openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
               notesProvider:
                 (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,

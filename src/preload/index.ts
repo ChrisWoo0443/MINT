@@ -13,6 +13,13 @@ interface StartRecordingArgs {
   title: string
   userName: string
   micDeviceId?: string
+  deepgramApiKey?: string
+  transcriptionProvider?: 'local' | 'deepgram'
+  whisperModel?: 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
+  openaiApiKey?: string
+  notesProvider?: 'openai' | 'ollama'
+  ollamaUrl?: string
+  ollamaModel?: string
 }
 
 interface MeetingMetadata {
