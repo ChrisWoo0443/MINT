@@ -94,6 +94,13 @@ export class LocalWhisperService implements TranscriptionService {
     const activeDurationMs = (activeSamples.length / SAMPLE_RATE) * 1000
     if (activeDurationMs < MIN_WINDOW_MS) return
 
+    const silenceHit = detectSilence(activeSamples, {
+      thresholdRms: SILENCE_THRESHOLD_RMS,
+      minDurationMs: SILENCE_MIN_DURATION_MS
+    })
+
+    if (silenceHit && !this.reconcileState.previousInterim) return
+
     const forceCommit = activeDurationMs >= MAX_WINDOW_MS
     this.jobInFlight = true
 
@@ -128,11 +135,6 @@ export class LocalWhisperService implements TranscriptionService {
           endMs: reconciled.interim.endMs
         })
       }
-
-      const silenceHit = detectSilence(activeSamples, {
-        thresholdRms: SILENCE_THRESHOLD_RMS,
-        minDurationMs: SILENCE_MIN_DURATION_MS
-      })
 
       if (silenceHit || forceCommit) {
         if (reconciled.interim) {

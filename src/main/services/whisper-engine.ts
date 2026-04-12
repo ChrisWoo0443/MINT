@@ -77,7 +77,13 @@ export class WhisperEngine {
         to: number
       }>
       const words: WhisperWord[] = segments
-        .filter((segment) => segment.text.trim().length > 0)
+        .filter((segment) => {
+          const trimmed = segment.text.trim()
+          if (trimmed.length === 0) return false
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) return false
+          if (trimmed.startsWith('(') && trimmed.endsWith(')')) return false
+          return true
+        })
         .map((segment) => ({
           text: segment.text.trim(),
           startMs: segment.from,
