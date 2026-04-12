@@ -80,7 +80,9 @@ export function MeetingList({
   const [editValue, setEditValue] = useState('')
   const [dragOverSection, setDragOverSection] = useState<string | null>(null)
   const dragCounters = useRef(new Map<string, number>())
-  const hasDeepgramKey = Boolean(localStorage.getItem('deepgramApiKey'))
+  const transcriptionProvider = localStorage.getItem('transcriptionProvider') || 'local'
+  const canRecord =
+    transcriptionProvider === 'local' || Boolean(localStorage.getItem('deepgramApiKey'))
 
   const loadData = useCallback(async (): Promise<void> => {
     const [meetingsData, tagsData] = await Promise.all([
@@ -294,8 +296,8 @@ export function MeetingList({
           </button>
           <button
             onClick={onStartRecording}
-            disabled={!hasDeepgramKey}
-            title={hasDeepgramKey ? undefined : 'Set a Deepgram API key in Settings'}
+            disabled={!canRecord}
+            title={canRecord ? undefined : 'Set a Deepgram API key in Settings or switch to Local provider'}
           >
             Start Recording
           </button>
