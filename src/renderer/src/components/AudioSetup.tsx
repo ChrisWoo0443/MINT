@@ -36,6 +36,8 @@ export function AudioSetup({ onComplete }: AudioSetupProps): React.JSX.Element {
           <h1>Welcome to MINT</h1>
           <p>Meeting Intelligence Notes & Transcription</p>
           <div className="setup-step-content">
+            <p className="setup-tagline">Just press <strong>Start Recording</strong> and let MINT do the rest.</p>
+
             <label htmlFor="display-name">Your Name</label>
             <input
               id="display-name"
@@ -61,6 +63,8 @@ export function AudioSetup({ onComplete }: AudioSetupProps): React.JSX.Element {
               </button>
             </div>
             <p className="setup-hint">Meeting transcripts and notes will be saved here.</p>
+
+            <p className="setup-disclaimer">Headphones are highly recommended. Without them, your microphone may pick up speaker audio and cause duplicate transcriptions.</p>
           </div>
           {error && <p className="error">{error}</p>}
           <button onClick={handleSubmit} disabled={!displayName.trim()}>

@@ -13,6 +13,8 @@ interface StartRecordingArgs {
   userName: string
   micDeviceId?: string
   deepgramApiKey?: string
+  transcriptionProvider?: 'local' | 'deepgram'
+  whisperModel?: 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
   openaiApiKey?: string
   notesProvider?: 'openai' | 'ollama'
   ollamaUrl?: string
@@ -47,6 +49,22 @@ interface TagDefinition {
   color: string
 }
 
+type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
+type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
+
+interface WhisperModelInfo {
+  name: WhisperModelName
+  sizeMB: number
+  downloaded: boolean
+  path: string
+}
+
+interface WhisperDownloadProgress {
+  name: WhisperModelName
+  bytesDownloaded: number
+  bytesTotal: number
+}
+
 interface MintAPI {
   startRecording: (args: StartRecordingArgs) => Promise<void>
   stopRecording: () => Promise<void>
@@ -69,6 +87,27 @@ interface MintAPI {
   getTags: () => Promise<TagDefinition[]>
   saveTags: (tags: TagDefinition[]) => Promise<void>
   setMeetingTags: (meetingId: string, tags: string[]) => Promise<void>
+  generateNotes: (args: {
+    meetingId: string
+    openaiApiKey?: string
+    notesProvider?: 'openai' | 'ollama'
+    ollamaUrl?: string
+    ollamaModel?: string
+  }) => Promise<NoteData>
+  whisper: {
+    listModels: () => Promise<WhisperModelInfo[]>
+    getModelStatus: (name: WhisperModelName) => Promise<WhisperModelStatus>
+    downloadModel: (name: WhisperModelName) => Promise<void>
+    deleteModel: (name: WhisperModelName) => Promise<void>
+    onDownloadProgress: (
+      callback: (progress: WhisperDownloadProgress) => void
+    ) => () => void
+  }
+  showOverlay: () => void
+  hideOverlay: () => void
+  destroyOverlay: () => void
+  onWindowBlur: (callback: () => void) => () => void
+  onWindowFocus: (callback: () => void) => () => void
 }
 
 declare global {

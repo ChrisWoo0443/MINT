@@ -13,6 +13,13 @@ interface StartRecordingArgs {
   title: string
   userName: string
   micDeviceId?: string
+  deepgramApiKey?: string
+  transcriptionProvider?: 'local' | 'deepgram'
+  whisperModel?: 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
+  openaiApiKey?: string
+  notesProvider?: 'openai' | 'ollama'
+  ollamaUrl?: string
+  ollamaModel?: string
 }
 
 interface MeetingMetadata {
@@ -41,6 +48,22 @@ interface TagDefinition {
   id: string
   name: string
   color: string
+}
+
+type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
+type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
+
+interface WhisperModelInfo {
+  name: WhisperModelName
+  sizeMB: number
+  downloaded: boolean
+  path: string
+}
+
+interface WhisperDownloadProgress {
+  name: WhisperModelName
+  bytesDownloaded: number
+  bytesTotal: number
 }
 
 interface MintAPI {
@@ -72,6 +95,20 @@ interface MintAPI {
     ollamaUrl?: string
     ollamaModel?: string
   }) => Promise<NoteData>
+  whisper: {
+    listModels: () => Promise<WhisperModelInfo[]>
+    getModelStatus: (name: WhisperModelName) => Promise<WhisperModelStatus>
+    downloadModel: (name: WhisperModelName) => Promise<void>
+    deleteModel: (name: WhisperModelName) => Promise<void>
+    onDownloadProgress: (
+      callback: (progress: WhisperDownloadProgress) => void
+    ) => () => void
+  }
+  showOverlay: () => void
+  hideOverlay: () => void
+  destroyOverlay: () => void
+  onWindowBlur: (callback: () => void) => () => void
+  onWindowFocus: (callback: () => void) => () => void
 }
 
 const mintAPI: MintAPI = {
@@ -126,7 +163,52 @@ const mintAPI: MintAPI = {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
-  }) => ipcRenderer.invoke('meetings:generateNotes', args)
+  }) => ipcRenderer.invoke('meetings:generateNotes', args),
+
+  whisper: {
+    listModels: () => ipcRenderer.invoke('whisper:listModels'),
+    getModelStatus: (name: WhisperModelName) =>
+      ipcRenderer.invoke('whisper:getModelStatus', name),
+    downloadModel: (name: WhisperModelName) =>
+      ipcRenderer.invoke('whisper:downloadModel', name),
+    deleteModel: (name: WhisperModelName) => ipcRenderer.invoke('whisper:deleteModel', name),
+    onDownloadProgress: (callback: (progress: WhisperDownloadProgress) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        progress: WhisperDownloadProgress
+      ): void => {
+        callback(progress)
+      }
+      ipcRenderer.on('whisper:download:progress', listener)
+      return () => {
+        ipcRenderer.removeListener('whisper:download:progress', listener)
+      }
+    }
+  },
+
+  showOverlay: () => ipcRenderer.send('overlay:show'),
+  hideOverlay: () => ipcRenderer.send('overlay:hide'),
+  destroyOverlay: () => ipcRenderer.send('overlay:destroy'),
+
+  onWindowBlur: (callback: () => void) => {
+    const listener = (): void => {
+      callback()
+    }
+    ipcRenderer.on('window:blur', listener)
+    return () => {
+      ipcRenderer.removeListener('window:blur', listener)
+    }
+  },
+
+  onWindowFocus: (callback: () => void) => {
+    const listener = (): void => {
+      callback()
+    }
+    ipcRenderer.on('window:focus', listener)
+    return () => {
+      ipcRenderer.removeListener('window:focus', listener)
+    }
+  }
 }
 
 // --- Audio capture (renderer-side for macOS BlackHole + microphone) ---

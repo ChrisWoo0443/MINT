@@ -1,16 +1,39 @@
-import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
+import { app, ipcMain, BrowserWindow, dialog, shell, webContents } from 'electron'
+import { join } from 'node:path'
 import { AudioCaptureService } from './services/audio-capture'
 import { AudioTeeService } from './services/audiotee'
 import { DeepgramService } from './services/deepgram'
 import { OpenAIService } from './services/openai'
 import { LocalStorageService } from './services/local-storage'
+import { WhisperModelManager, type ModelName } from './services/whisper-model-manager'
+import { LocalWhisperService } from './services/local-whisper'
+import { WhisperEngine } from './services/whisper-engine'
+import type { TranscriptionService } from './services/transcription'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   const audioCaptureService = new AudioCaptureService()
   const audioTeeService = new AudioTeeService()
-  const micDeepgramService = new DeepgramService()
-  const systemDeepgramService = new DeepgramService()
+  let micTranscriptionService: TranscriptionService | null = null
+  let systemTranscriptionService: TranscriptionService | null = null
+  let sharedWhisperEngine: WhisperEngine | null = null
+  let sharedWhisperEngineModel: ModelName | null = null
   const localStorageService = new LocalStorageService()
+  const whisperModelManager = new WhisperModelManager(join(app.getPath('userData'), 'models'))
+
+  async function ensureWhisperEngine(modelName: ModelName): Promise<WhisperEngine> {
+    if (sharedWhisperEngine && sharedWhisperEngineModel === modelName) {
+      return sharedWhisperEngine
+    }
+    if (sharedWhisperEngine) {
+      await sharedWhisperEngine.unload()
+    }
+    const modelPath = whisperModelManager.getModelPath(modelName)
+    const engine = new WhisperEngine(modelPath)
+    await engine.load()
+    sharedWhisperEngine = engine
+    sharedWhisperEngineModel = modelName
+    return engine
+  }
 
   let currentMeetingId: string | null = null
 
@@ -82,14 +105,14 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
         notesProvider?: 'openai' | 'ollama'
         ollamaUrl?: string
         ollamaModel?: string
+        transcriptionProvider?: 'local' | 'deepgram'
+        whisperModel?: ModelName
       }
     ) => {
       try {
         const { title, userName } = args
-
         currentMeetingId = await localStorageService.createMeeting(title)
 
-        const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
         const handleTranscript = async (result: {
           speaker: string | null
           content: string
@@ -97,8 +120,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           timestampEnd: number
           isFinal: boolean
         }): Promise<void> => {
-          mainWindow.webContents.send('transcript:chunk', result)
-
+          for (const wc of webContents.getAllWebContents()) {
+            wc.send('transcript:chunk', result)
+          }
           if (result.isFinal && currentMeetingId) {
             try {
               await localStorageService.insertTranscriptChunk(
@@ -114,33 +138,56 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
           }
         }
 
-        // Start mic transcription (always)
-        await micDeepgramService.startStreaming(deepgramApiKey, userName, handleTranscript)
-        console.log(`[MINT] Mic Deepgram stream started (speaker: "${userName}")`)
+        const provider = args.transcriptionProvider ?? 'local'
 
-        // Start system audio transcription via AudioTee
+        if (provider === 'local') {
+          const modelName: ModelName = args.whisperModel ?? 'small.en'
+          const status = await whisperModelManager.getModelStatus(modelName)
+          if (status !== 'ready') {
+            throw new Error(
+              `Whisper model "${modelName}" is not downloaded. Download it in Settings first.`
+            )
+          }
+          const engine = await ensureWhisperEngine(modelName)
+          micTranscriptionService = new LocalWhisperService(engine)
+          systemTranscriptionService = new LocalWhisperService(engine)
+        } else {
+          micTranscriptionService = new DeepgramService()
+          systemTranscriptionService = new DeepgramService()
+        }
+
+        const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
+
+        await micTranscriptionService.startStreaming(
+          { deepgramApiKey },
+          userName,
+          handleTranscript
+        )
+        console.log(`[MINT] Mic transcription started (provider: ${provider}, speaker: "${userName}")`)
+
         try {
-          await systemDeepgramService.startStreaming(
-            deepgramApiKey,
+          await systemTranscriptionService.startStreaming(
+            { deepgramApiKey },
             'Meeting Users',
             handleTranscript
           )
-          console.log('[MINT] System audio Deepgram stream started (speaker: "Meeting Users")')
-
+          console.log(
+            `[MINT] System audio transcription started (provider: ${provider}, speaker: "Meeting Users")`
+          )
           await audioTeeService.start((chunk) => {
-            systemDeepgramService.sendAudio(chunk)
+            systemTranscriptionService?.sendAudio(chunk)
           })
         } catch (systemError) {
-          console.warn('[MINT] System audio Deepgram stream unavailable:', systemError)
+          console.warn('[MINT] System audio transcription unavailable:', systemError)
         }
 
-        mainWindow.webContents.send('recording:status', 'recording')
+        for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'recording')
         const micDeviceId = args.micDeviceId || 'default'
         audioCaptureService.startCapture(mainWindow, { micDeviceId })
       } catch (startError) {
         console.error('Failed to start recording:', startError)
         currentMeetingId = null
-        mainWindow.webContents.send('recording:status', 'error')
+        for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'error')
         throw startError
       }
     }
@@ -149,11 +196,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('recording:stop', async () => {
     audioCaptureService.stopCapture(mainWindow)
     audioTeeService.stop()
-    micDeepgramService.stopStreaming()
-    systemDeepgramService.stopStreaming()
+    micTranscriptionService?.stopStreaming()
+    systemTranscriptionService?.stopStreaming()
+    micTranscriptionService = null
+    systemTranscriptionService = null
 
     if (!currentMeetingId) {
-      mainWindow.webContents.send('recording:status', 'stopped')
+      for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'stopped')
       return
     }
 
@@ -161,13 +210,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     currentMeetingId = null
 
     localStorageService.clearTranscriptBuffer(meetingId)
-    await localStorageService.updateMeetingStatus(
-      meetingId,
-      'completed',
-      new Date().toISOString()
-    )
+    await localStorageService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
 
-    mainWindow.webContents.send('recording:status', 'stopped')
+    for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'stopped')
   })
 
   ipcMain.handle(
@@ -237,7 +282,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   // --- Audio handlers ---
 
   ipcMain.on('audio:chunk:mic', (_event, chunk: Buffer) => {
-    micDeepgramService.sendAudio(chunk)
+    micTranscriptionService?.sendAudio(chunk)
   })
 
   ipcMain.handle('audio:getDevices', async () => {
@@ -264,6 +309,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
       return null
     }
   })
+
+  // --- Whisper model handlers ---
+
+  ipcMain.handle('whisper:listModels', async () => whisperModelManager.listModels())
+
+  ipcMain.handle('whisper:getModelStatus', async (_event, name: ModelName) =>
+    whisperModelManager.getModelStatus(name)
+  )
+
+  ipcMain.handle('whisper:downloadModel', async (_event, name: ModelName) => {
+    await whisperModelManager.downloadModel(name, (progress) => {
+      for (const wc of webContents.getAllWebContents()) {
+        wc.send('whisper:download:progress', progress)
+      }
+    })
+  })
+
+  ipcMain.handle('whisper:deleteModel', async (_event, name: ModelName) =>
+    whisperModelManager.deleteModel(name)
+  )
 
   // --- Shell handlers ---
 

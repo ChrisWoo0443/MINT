@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -39,6 +39,41 @@ function createWindow(): BrowserWindow {
   return mainWindow
 }
 
+let overlayWindow: BrowserWindow | null = null
+
+function createOverlayWindow(): BrowserWindow {
+  const overlay = new BrowserWindow({
+    width: 320,
+    height: 220,
+    resizable: false,
+    alwaysOnTop: true,
+    frame: false,
+    transparent: true,
+    skipTaskbar: true,
+    hasShadow: true,
+    show: false,
+    vibrancy: 'under-window',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    overlay.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?overlay=1`)
+  } else {
+    overlay.loadFile(join(__dirname, '../renderer/index.html'), {
+      query: { overlay: '1' }
+    })
+  }
+
+  overlay.on('closed', () => {
+    overlayWindow = null
+  })
+
+  return overlay
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -55,6 +90,36 @@ app.whenReady().then(() => {
 
   const mainWindow = createWindow()
   registerIpcHandlers(mainWindow)
+
+  ipcMain.on('overlay:show', () => {
+    try {
+      if (!overlayWindow) {
+        overlayWindow = createOverlayWindow()
+      }
+      overlayWindow?.showInactive()
+    } catch (error) {
+      console.error('Failed to show overlay:', error)
+      overlayWindow = null
+    }
+  })
+
+  ipcMain.on('overlay:hide', () => {
+    overlayWindow?.hide()
+  })
+
+  ipcMain.on('overlay:destroy', () => {
+    overlayWindow?.close()
+    overlayWindow = null
+  })
+
+  mainWindow.on('blur', () => {
+    mainWindow.webContents.send('window:blur')
+  })
+
+  mainWindow.on('focus', () => {
+    mainWindow.webContents.send('window:focus')
+    overlayWindow?.hide()
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
