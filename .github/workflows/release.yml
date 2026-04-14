@@ -21,6 +21,10 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run typecheck
+
+      - run: npm test
+
       - run: npx electron-vite build && npx electron-builder --mac --publish never
 
       - uses: softprops/action-gh-release@v2

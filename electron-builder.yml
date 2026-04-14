@@ -12,6 +12,7 @@ files:
 asarUnpack:
   - resources/**
   - node_modules/audiotee/**
+  - node_modules/smart-whisper/**
 extraResources:
   - from: node_modules/audiotee/bin/audiotee
     to: audiotee
