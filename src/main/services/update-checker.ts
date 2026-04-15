@@ -86,6 +86,7 @@ export class UpdateCheckerService {
   private intervalHandle: NodeJS.Timeout | null = null
   private startTimeoutHandle: NodeJS.Timeout | null = null
   private autoCheckEnabled = true
+  private inflightCheck: Promise<void> | null = null
 
   constructor(options: UpdateCheckerOptions) {
     this.currentVersion = options.currentVersion
@@ -107,10 +108,20 @@ export class UpdateCheckerService {
   }
 
   async checkNow(): Promise<void> {
+    if (this.inflightCheck) return this.inflightCheck
     if (!this.isPackaged) {
       this.setStatus({ kind: 'disabled' })
       return
     }
+    this.inflightCheck = this.runCheck()
+    try {
+      await this.inflightCheck
+    } finally {
+      this.inflightCheck = null
+    }
+  }
+
+  private async runCheck(): Promise<void> {
     this.setStatus({ kind: 'checking' })
 
     const controller = new AbortController()
@@ -192,6 +203,7 @@ export class UpdateCheckerService {
 
   private startScheduler(): void {
     if (this.intervalHandle) return
+    if (this.startTimeoutHandle) return
     this.intervalHandle = setInterval(() => {
       this.checkNow().catch((error) =>
         console.error('[MINT] Update checker scheduled check failed:', error)
@@ -213,7 +225,11 @@ export class UpdateCheckerService {
   private setStatus(next: UpdateStatus): void {
     this.status = next
     for (const listener of this.listeners) {
-      listener(next)
+      try {
+        listener(next)
+      } catch (error) {
+        console.error('[MINT] Update checker listener threw:', error)
+      }
     }
   }
 }
