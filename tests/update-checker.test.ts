@@ -92,7 +92,13 @@ describe('UpdateCheckerService', () => {
     vi.unstubAllGlobals()
   })
 
-  function makeRelease(version: string) {
+  function makeRelease(version: string): {
+    tag_name: string
+    name: string
+    body: string
+    html_url: string
+    assets: Array<{ name: string; browser_download_url: string }>
+  } {
     return {
       tag_name: `v${version}`,
       name: `v${version}`,
