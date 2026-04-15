@@ -66,6 +66,22 @@ interface WhisperDownloadProgress {
   bytesTotal: number
 }
 
+interface UpdateInfoPayload {
+  version: string
+  releaseName: string
+  releaseUrl: string
+  downloadUrl: string
+  releaseNotes: string
+}
+
+type UpdateStatusPayload =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'up-to-date'; checkedAt: number }
+  | { kind: 'available'; info: UpdateInfoPayload; checkedAt: number }
+  | { kind: 'error'; message: string; checkedAt: number }
+  | { kind: 'disabled' }
+
 interface MintAPI {
   startRecording: (args: StartRecordingArgs) => Promise<void>
   stopRecording: () => Promise<void>
@@ -103,6 +119,14 @@ interface MintAPI {
     onDownloadProgress: (
       callback: (progress: WhisperDownloadProgress) => void
     ) => () => void
+  }
+  getAppVersion: () => Promise<string>
+  updates: {
+    getStatus: () => Promise<UpdateStatusPayload>
+    checkNow: () => Promise<void>
+    setAutoCheck: (enabled: boolean) => Promise<void>
+    openExternal: (url: string) => Promise<void>
+    onStatus: (callback: (status: UpdateStatusPayload) => void) => () => void
   }
   showOverlay: () => void
   hideOverlay: () => void
@@ -182,6 +206,23 @@ const mintAPI: MintAPI = {
       ipcRenderer.on('whisper:download:progress', listener)
       return () => {
         ipcRenderer.removeListener('whisper:download:progress', listener)
+      }
+    }
+  },
+
+  getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
+  updates: {
+    getStatus: () => ipcRenderer.invoke('updates:getStatus'),
+    checkNow: () => ipcRenderer.invoke('updates:checkNow'),
+    setAutoCheck: (enabled: boolean) => ipcRenderer.invoke('updates:setAutoCheck', enabled),
+    openExternal: (url: string) => ipcRenderer.invoke('updates:openExternal', url),
+    onStatus: (callback: (status: UpdateStatusPayload) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatusPayload): void => {
+        callback(status)
+      }
+      ipcRenderer.on('updates:status', listener)
+      return () => {
+        ipcRenderer.removeListener('updates:status', listener)
       }
     }
   },

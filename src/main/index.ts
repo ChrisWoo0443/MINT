@@ -89,7 +89,12 @@ app.whenReady().then(() => {
   })
 
   const mainWindow = createWindow()
-  registerIpcHandlers(mainWindow)
+  const { updateCheckerService } = registerIpcHandlers(mainWindow)
+  updateCheckerService.start()
+
+  app.on('before-quit', () => {
+    updateCheckerService.stop()
+  })
 
   ipcMain.on('overlay:show', () => {
     try {

@@ -9,8 +9,11 @@ import { WhisperModelManager, type ModelName } from './services/whisper-model-ma
 import { LocalWhisperService } from './services/local-whisper'
 import { WhisperEngine } from './services/whisper-engine'
 import type { TranscriptionService } from './services/transcription'
+import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
 
-export function registerIpcHandlers(mainWindow: BrowserWindow): void {
+export function registerIpcHandlers(mainWindow: BrowserWindow): {
+  updateCheckerService: UpdateCheckerService
+} {
   const audioCaptureService = new AudioCaptureService()
   const audioTeeService = new AudioTeeService()
   let micTranscriptionService: TranscriptionService | null = null
@@ -19,6 +22,17 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   let sharedWhisperEngineModel: ModelName | null = null
   const localStorageService = new LocalStorageService()
   const whisperModelManager = new WhisperModelManager(join(app.getPath('userData'), 'models'))
+
+  const updateCheckerService = new UpdateCheckerService({
+    currentVersion: app.getVersion(),
+    isPackaged: app.isPackaged
+  })
+
+  updateCheckerService.onStatusChange((status) => {
+    for (const wc of webContents.getAllWebContents()) {
+      wc.send('updates:status', status)
+    }
+  })
 
   async function ensureWhisperEngine(modelName: ModelName): Promise<WhisperEngine> {
     if (sharedWhisperEngine && sharedWhisperEngineModel === modelName) {
@@ -330,6 +344,24 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     whisperModelManager.deleteModel(name)
   )
 
+  // --- Update checker handlers ---
+
+  ipcMain.handle('updates:getStatus', (): UpdateStatus => updateCheckerService.getStatus())
+
+  ipcMain.handle('updates:checkNow', async () => {
+    await updateCheckerService.checkNow()
+  })
+
+  ipcMain.handle('updates:setAutoCheck', (_event, enabled: boolean) => {
+    updateCheckerService.setAutoCheck(enabled)
+  })
+
+  ipcMain.handle('updates:openExternal', async (_event, url: string) => {
+    await shell.openExternal(url)
+  })
+
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+
   // --- Shell handlers ---
 
   ipcMain.handle('shell:openExternal', async (_event, url: string) => {
@@ -339,4 +371,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('shell:openApp', async (_event, appPath: string) => {
     await shell.openPath(appPath)
   })
+
+  return { updateCheckerService }
 }
