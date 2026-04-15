@@ -45,10 +45,11 @@ export function parseReleaseResponse(raw: unknown): UpdateInfo {
     throw new Error(`Malformed tag_name: ${release.tag_name}`)
   }
   const version = `${match[1]}.${match[2]}.${match[3]}`
-  const dmgAsset = release.assets.find((asset) => asset.name.toLowerCase().endsWith('.dmg'))
+  const assets = release.assets ?? []
+  const dmgAsset = assets.find((asset) => asset.name.toLowerCase().endsWith('.dmg'))
   return {
     version,
-    releaseName: release.name,
+    releaseName: release.name ?? release.tag_name,
     releaseUrl: release.html_url,
     downloadUrl: dmgAsset ? dmgAsset.browser_download_url : release.html_url,
     releaseNotes: release.body ?? ''
