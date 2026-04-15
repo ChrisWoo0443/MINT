@@ -5,6 +5,7 @@ import { LiveRecording } from './components/LiveRecording'
 import { OverlayRecording } from './components/OverlayRecording'
 import { Settings } from './components/Settings'
 import { AudioSetup } from './components/AudioSetup'
+import { UpdateBanner } from './components/UpdateBanner'
 
 type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
@@ -152,22 +153,28 @@ function MainApp(): React.JSX.Element {
   }
 
   return (
-    <div className="app-layout">
-      <nav className="sidebar">
-        <button
-          className={
-            view === 'meetings' || view === 'detail' || view === 'recording' ? 'active' : ''
-          }
-          onClick={() => setView('meetings')}
-        >
-          Meetings
-        </button>
-        <button className={view === 'settings' ? 'active' : ''} onClick={() => setView('settings')}>
-          Settings
-        </button>
-      </nav>
-      <main className="main-content">{renderContent()}</main>
-    </div>
+    <>
+      <UpdateBanner />
+      <div className="app-layout">
+        <nav className="sidebar">
+          <button
+            className={
+              view === 'meetings' || view === 'detail' || view === 'recording' ? 'active' : ''
+            }
+            onClick={() => setView('meetings')}
+          >
+            Meetings
+          </button>
+          <button
+            className={view === 'settings' ? 'active' : ''}
+            onClick={() => setView('settings')}
+          >
+            Settings
+          </button>
+        </nav>
+        <main className="main-content">{renderContent()}</main>
+      </div>
+    </>
   )
 }
 

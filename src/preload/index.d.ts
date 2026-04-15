@@ -65,6 +65,19 @@ interface WhisperDownloadProgress {
   bytesTotal: number
 }
 
+interface UpdateInfoPayload {
+  version: string
+  releaseUrl: string
+}
+
+type UpdateStatusPayload =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'up-to-date'; checkedAt: number }
+  | { kind: 'available'; info: UpdateInfoPayload; checkedAt: number }
+  | { kind: 'error'; message: string; checkedAt: number }
+  | { kind: 'disabled' }
+
 interface MintAPI {
   startRecording: (args: StartRecordingArgs) => Promise<void>
   stopRecording: () => Promise<void>
@@ -102,6 +115,14 @@ interface MintAPI {
     onDownloadProgress: (
       callback: (progress: WhisperDownloadProgress) => void
     ) => () => void
+  }
+  getAppVersion: () => Promise<string>
+  updates: {
+    getStatus: () => Promise<UpdateStatusPayload>
+    checkNow: () => Promise<void>
+    setAutoCheck: (enabled: boolean) => Promise<void>
+    openExternal: (url: string) => Promise<void>
+    onStatus: (callback: (status: UpdateStatusPayload) => void) => () => void
   }
   showOverlay: () => void
   hideOverlay: () => void

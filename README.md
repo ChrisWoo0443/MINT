@@ -69,15 +69,30 @@ Everything is stored locally on your machine as Markdown files — no cloud stor
 5. **Stop & save** — Transcript saved as Markdown to your chosen storage folder
 6. **Generate notes** — Hit the generate button to produce structured notes via GPT-4o or Ollama
 
-## Download
+## Install
 
-Grab the latest `.dmg` from the [Releases](https://github.com/ChrisWoo0443/MINT/releases) page. Open it and drag MINT to your Applications folder.
+MINT is distributed as source — you build it yourself in one step. This avoids macOS Gatekeeper warnings entirely, since apps you build locally aren't quarantined.
 
 ### Prerequisites
 
-- **macOS** (required — uses macOS-specific audio capture)
+- **macOS** with Apple Silicon (required — uses macOS-specific audio capture)
+- **[Node.js](https://nodejs.org/)** 20 or later
+- **Git**
 - **Deepgram API key** ([get one free](https://console.deepgram.com))
 - **OpenAI API key** (optional — can use Ollama instead)
+
+### Build and install
+
+```bash
+git clone https://github.com/ChrisWoo0443/MINT.git
+cd MINT
+npm install
+npm run build:mac
+```
+
+When the build finishes, open the generated `.dmg` in `dist/` and drag **MINT** into your Applications folder. Done — launch it from Launchpad or Spotlight.
+
+To update later, `git pull` and re-run `npm run build:mac`.
 
 ### API Keys
 
