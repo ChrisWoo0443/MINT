@@ -1560,3 +1560,44 @@ label {
 .update-banner-dismiss:hover {
   opacity: 0.7;
 }
+
+/* ----- Updates Settings Section ----- */
+
+.updates-row,
+.updates-status-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 0;
+}
+
+.updates-value {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.updates-status-label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.updates-status-value {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.updates-inline-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.updates-auto-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  cursor: pointer;
+}

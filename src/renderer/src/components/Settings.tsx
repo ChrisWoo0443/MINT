@@ -14,6 +14,22 @@ interface SettingsProps {
 type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
 type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
 
+type UpdateInfoPayload = {
+  version: string
+  releaseName: string
+  releaseUrl: string
+  downloadUrl: string
+  releaseNotes: string
+}
+
+type UpdateStatusPayload =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'up-to-date'; checkedAt: number }
+  | { kind: 'available'; info: UpdateInfoPayload; checkedAt: number }
+  | { kind: 'error'; message: string; checkedAt: number }
+  | { kind: 'disabled' }
+
 export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): React.JSX.Element {
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDevice, setSelectedDevice] = useState<string>(
@@ -44,6 +60,11 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   const [customPrompt, setCustomPrompt] = useState(
     () => localStorage.getItem('notesCustomPrompt') || ''
   )
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatusPayload>({ kind: 'idle' })
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState<boolean>(
+    () => localStorage.getItem('autoCheckUpdates') !== 'false'
+  )
+  const [appVersion, setAppVersion] = useState<string>('')
 
   const loadDevices = useCallback(async (): Promise<void> => {
     const devices = await navigator.mediaDevices.enumerateDevices()
@@ -101,6 +122,21 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     return unsubscribe
   }, [whisperModel])
 
+  useEffect(() => {
+    window.mintAPI.getAppVersion().then(setAppVersion)
+  }, [])
+
+  useEffect(() => {
+    window.mintAPI.updates.getStatus().then(setUpdateStatus)
+    const unsubscribe = window.mintAPI.updates.onStatus(setUpdateStatus)
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    window.mintAPI.updates.setAutoCheck(autoCheckUpdates)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleDeviceChange = async (deviceId: string): Promise<void> => {
     setSelectedDevice(deviceId)
     localStorage.setItem('micDeviceId', deviceId)
@@ -139,6 +175,42 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
       setWhisperDownloadPct(null)
     }
   }
+
+  const handleCheckForUpdates = async (): Promise<void> => {
+    await window.mintAPI.updates.checkNow()
+  }
+
+  const handleToggleAutoCheck = async (enabled: boolean): Promise<void> => {
+    setAutoCheckUpdates(enabled)
+    localStorage.setItem('autoCheckUpdates', enabled ? 'true' : 'false')
+    await window.mintAPI.updates.setAutoCheck(enabled)
+  }
+
+  const handleOpenReleaseNotes = async (): Promise<void> => {
+    if (updateStatus.kind === 'available') {
+      await window.mintAPI.updates.openExternal(updateStatus.info.releaseUrl)
+    }
+  }
+
+  const handleOpenDownload = async (): Promise<void> => {
+    if (updateStatus.kind === 'available') {
+      await window.mintAPI.updates.openExternal(updateStatus.info.downloadUrl)
+    }
+  }
+
+  const formatRelativeTime = (timestamp: number): string => {
+    const diffSec = Math.floor((Date.now() - timestamp) / 1000)
+    if (diffSec < 60) return 'just now'
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`
+    const diffHour = Math.floor(diffMin / 60)
+    if (diffHour < 24) return `${diffHour} hour${diffHour === 1 ? '' : 's'} ago`
+    const diffDay = Math.floor(diffHour / 24)
+    return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`
+  }
+
+  const isCheckingNow = updateStatus.kind === 'checking'
+  const isUpdatesDisabled = updateStatus.kind === 'disabled'
 
   return (
     <div className="settings">
@@ -358,6 +430,77 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
           </button>
         </div>
         <p className="setup-hint">Meeting transcripts and notes are saved here.</p>
+      </section>
+
+      <section>
+        <h3>Updates</h3>
+        <div className="updates-row">
+          <span>Current version</span>
+          <span className="updates-value">{appVersion || '—'}</span>
+        </div>
+
+        <div className="updates-status-row">
+          <div>
+            <div className="updates-status-label">Status</div>
+            <div className="updates-status-value">
+              {updateStatus.kind === 'idle' && 'Not checked yet'}
+              {updateStatus.kind === 'checking' && 'Checking…'}
+              {updateStatus.kind === 'up-to-date' && '✓ Up to date'}
+              {updateStatus.kind === 'available' && (
+                <>
+                  Version {updateStatus.info.version} is available
+                  <div className="updates-inline-actions">
+                    <button
+                      className="update-banner-link"
+                      style={{ color: 'var(--color-accent)' }}
+                      onClick={handleOpenReleaseNotes}
+                    >
+                      Release notes
+                    </button>
+                    <button className="update-banner-primary" onClick={handleOpenDownload}>
+                      Download
+                    </button>
+                  </div>
+                </>
+              )}
+              {updateStatus.kind === 'error' && 'Check failed. Try again later.'}
+              {updateStatus.kind === 'disabled' && 'Update checking disabled in development'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleCheckForUpdates}
+            disabled={isCheckingNow || isUpdatesDisabled}
+          >
+            Check for updates
+          </button>
+        </div>
+
+        {updateStatus.kind !== 'idle' &&
+          updateStatus.kind !== 'disabled' &&
+          updateStatus.kind !== 'error' && (
+            <p className="settings-hint">
+              Last checked:{' '}
+              {'checkedAt' in updateStatus ? formatRelativeTime(updateStatus.checkedAt) : '—'}
+            </p>
+          )}
+
+        {updateStatus.kind === 'error' && (
+          <p className="settings-hint">
+            Last attempt:{' '}
+            {'checkedAt' in updateStatus ? formatRelativeTime(updateStatus.checkedAt) : '—'}
+          </p>
+        )}
+
+        <label className="updates-auto-check">
+          <input
+            type="checkbox"
+            checked={autoCheckUpdates}
+            disabled={isUpdatesDisabled}
+            onChange={(e) => handleToggleAutoCheck(e.target.checked)}
+          />
+          Automatically check for updates
+        </label>
       </section>
 
       <section>
