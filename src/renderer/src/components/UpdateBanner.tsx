@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react'
 
 type UpdateInfoPayload = {
   version: string
-  releaseName: string
   releaseUrl: string
-  downloadUrl: string
-  releaseNotes: string
 }
 
 type UpdateStatusPayload =
@@ -31,11 +28,7 @@ export function UpdateBanner(): React.JSX.Element | null {
   if (status.kind !== 'available') return null
   if (dismissedVersion === status.info.version) return null
 
-  const handleDownload = async (): Promise<void> => {
-    await window.mintAPI.updates.openExternal(status.info.downloadUrl)
-  }
-
-  const handleReleaseNotes = async (): Promise<void> => {
+  const handleViewOnGitHub = async (): Promise<void> => {
     await window.mintAPI.updates.openExternal(status.info.releaseUrl)
   }
 
@@ -46,13 +39,13 @@ export function UpdateBanner(): React.JSX.Element | null {
 
   return (
     <div className="update-banner">
-      <span className="update-banner-message">Version {status.info.version} is available</span>
+      <span className="update-banner-message">
+        Version {status.info.version} is available — run{' '}
+        <code>git pull &amp;&amp; npm run build:mac</code> to update
+      </span>
       <div className="update-banner-actions">
-        <button className="update-banner-link" onClick={handleReleaseNotes}>
-          Release notes
-        </button>
-        <button className="update-banner-primary" onClick={handleDownload}>
-          Download
+        <button className="update-banner-primary" onClick={handleViewOnGitHub}>
+          View on GitHub
         </button>
         <button
           className="update-banner-dismiss"

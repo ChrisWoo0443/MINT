@@ -67,10 +67,7 @@ interface WhisperDownloadProgress {
 
 interface UpdateInfoPayload {
   version: string
-  releaseName: string
   releaseUrl: string
-  downloadUrl: string
-  releaseNotes: string
 }
 
 type UpdateStatusPayload =

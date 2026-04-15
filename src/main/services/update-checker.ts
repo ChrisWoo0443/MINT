@@ -1,9 +1,6 @@
 export interface UpdateInfo {
   version: string
-  releaseName: string
   releaseUrl: string
-  downloadUrl: string
-  releaseNotes: string
 }
 
 const VERSION_REGEX = /^v?(\d+)\.(\d+)\.(\d+)$/
@@ -16,43 +13,52 @@ function parseVersionTuple(version: string): [number, number, number] {
   return [Number(match[1]), Number(match[2]), Number(match[3])]
 }
 
-export function compareVersions(a: string, b: string): -1 | 0 | 1 {
-  const [aMajor, aMinor, aPatch] = parseVersionTuple(a)
-  const [bMajor, bMinor, bPatch] = parseVersionTuple(b)
-  if (aMajor !== bMajor) return aMajor > bMajor ? 1 : -1
-  if (aMinor !== bMinor) return aMinor > bMinor ? 1 : -1
-  if (aPatch !== bPatch) return aPatch > bPatch ? 1 : -1
+function compareTuples(
+  a: [number, number, number],
+  b: [number, number, number]
+): -1 | 0 | 1 {
+  if (a[0] !== b[0]) return a[0] > b[0] ? 1 : -1
+  if (a[1] !== b[1]) return a[1] > b[1] ? 1 : -1
+  if (a[2] !== b[2]) return a[2] > b[2] ? 1 : -1
   return 0
 }
 
-interface GitHubReleaseAsset {
-  name: string
-  browser_download_url: string
+export function compareVersions(a: string, b: string): -1 | 0 | 1 {
+  return compareTuples(parseVersionTuple(a), parseVersionTuple(b))
 }
 
-interface GitHubReleaseResponse {
-  tag_name: string
+interface GitHubTag {
   name: string
-  body: string | null
-  html_url: string
-  assets: GitHubReleaseAsset[]
 }
 
-export function parseReleaseResponse(raw: unknown): UpdateInfo {
-  const release = raw as GitHubReleaseResponse
-  const match = VERSION_REGEX.exec(release.tag_name)
-  if (!match) {
-    throw new Error(`Malformed tag_name: ${release.tag_name}`)
+export function parseLatestTag(raw: unknown, repo: string): UpdateInfo {
+  if (!Array.isArray(raw)) {
+    throw new Error('Expected an array of tags')
   }
-  const version = `${match[1]}.${match[2]}.${match[3]}`
-  const assets = release.assets ?? []
-  const dmgAsset = assets.find((asset) => asset.name.toLowerCase().endsWith('.dmg'))
+  const tags = raw as GitHubTag[]
+  let latestTuple: [number, number, number] | null = null
+  let latestName: string | null = null
+  for (const tag of tags) {
+    if (!tag || typeof tag.name !== 'string') continue
+    const match = VERSION_REGEX.exec(tag.name)
+    if (!match) continue
+    const tuple: [number, number, number] = [
+      Number(match[1]),
+      Number(match[2]),
+      Number(match[3])
+    ]
+    if (!latestTuple || compareTuples(tuple, latestTuple) > 0) {
+      latestTuple = tuple
+      latestName = tag.name
+    }
+  }
+  if (!latestTuple || !latestName) {
+    throw new Error('No valid semver tags found')
+  }
+  const version = `${latestTuple[0]}.${latestTuple[1]}.${latestTuple[2]}`
   return {
     version,
-    releaseName: release.name ?? release.tag_name,
-    releaseUrl: release.html_url,
-    downloadUrl: dmgAsset ? dmgAsset.browser_download_url : release.html_url,
-    releaseNotes: release.body ?? ''
+    releaseUrl: `https://github.com/${repo}/tree/${latestName}`
   }
 }
 
@@ -128,16 +134,13 @@ export class UpdateCheckerService {
     const timeoutId = setTimeout(() => controller.abort(), this.fetchTimeoutMs)
 
     try {
-      const response = await fetch(
-        `https://api.github.com/repos/${this.repo}/releases/latest`,
-        {
-          headers: {
-            'User-Agent': `MINT-UpdateChecker/${this.currentVersion}`,
-            Accept: 'application/vnd.github+json'
-          },
-          signal: controller.signal
-        }
-      )
+      const response = await fetch(`https://api.github.com/repos/${this.repo}/tags`, {
+        headers: {
+          'User-Agent': `MINT-UpdateChecker/${this.currentVersion}`,
+          Accept: 'application/vnd.github+json'
+        },
+        signal: controller.signal
+      })
       if (response.status === 404) {
         this.setStatus({ kind: 'up-to-date', checkedAt: Date.now() })
         return
@@ -154,9 +157,12 @@ export class UpdateCheckerService {
       const raw = await response.json()
       let info: UpdateInfo
       try {
-        info = parseReleaseResponse(raw)
+        info = parseLatestTag(raw, this.repo)
       } catch (parseError) {
-        console.warn('[MINT] Update checker: malformed release, treating as up-to-date:', parseError)
+        console.warn(
+          '[MINT] Update checker: no usable tags, treating as up-to-date:',
+          parseError
+        )
         this.setStatus({ kind: 'up-to-date', checkedAt: Date.now() })
         return
       }

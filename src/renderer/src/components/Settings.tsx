@@ -16,10 +16,7 @@ type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
 
 type UpdateInfoPayload = {
   version: string
-  releaseName: string
   releaseUrl: string
-  downloadUrl: string
-  releaseNotes: string
 }
 
 type UpdateStatusPayload =
@@ -186,15 +183,9 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     await window.mintAPI.updates.setAutoCheck(enabled)
   }
 
-  const handleOpenReleaseNotes = async (): Promise<void> => {
+  const handleViewOnGitHub = async (): Promise<void> => {
     if (updateStatus.kind === 'available') {
       await window.mintAPI.updates.openExternal(updateStatus.info.releaseUrl)
-    }
-  }
-
-  const handleOpenDownload = async (): Promise<void> => {
-    if (updateStatus.kind === 'available') {
-      await window.mintAPI.updates.openExternal(updateStatus.info.downloadUrl)
     }
   }
 
@@ -448,17 +439,11 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
               {updateStatus.kind === 'up-to-date' && '✓ Up to date'}
               {updateStatus.kind === 'available' && (
                 <>
-                  Version {updateStatus.info.version} is available
+                  Version {updateStatus.info.version} is available. Run{' '}
+                  <code>git pull &amp;&amp; npm run build:mac</code> to update.
                   <div className="updates-inline-actions">
-                    <button
-                      className="update-banner-link"
-                      style={{ color: 'var(--color-accent)' }}
-                      onClick={handleOpenReleaseNotes}
-                    >
-                      Release notes
-                    </button>
-                    <button className="update-banner-primary" onClick={handleOpenDownload}>
-                      Download
+                    <button className="update-banner-primary" onClick={handleViewOnGitHub}>
+                      View on GitHub
                     </button>
                   </div>
                 </>

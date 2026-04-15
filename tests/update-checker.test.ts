@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
   compareVersions,
-  parseReleaseResponse,
+  parseLatestTag,
   UpdateCheckerService,
   type UpdateStatus
 } from '../src/main/services/update-checker'
@@ -35,82 +35,55 @@ describe('compareVersions', () => {
   })
 })
 
-describe('parseReleaseResponse', () => {
-  const fixture = {
-    tag_name: 'v1.2.0',
-    name: 'v1.2.0 notes',
-    body: 'Release notes body',
-    html_url: 'https://github.com/ChrisWoo0443/MINT/releases/tag/v1.2.0',
-    assets: [
-      {
-        name: 'mint-1.2.0.dmg',
-        browser_download_url:
-          'https://github.com/ChrisWoo0443/MINT/releases/download/v1.2.0/mint-1.2.0.dmg'
-      },
-      {
-        name: 'checksum.txt',
-        browser_download_url:
-          'https://github.com/ChrisWoo0443/MINT/releases/download/v1.2.0/checksum.txt'
-      }
-    ]
-  }
+describe('parseLatestTag', () => {
+  const repo = 'ChrisWoo0443/MINT'
 
-  it('extracts version, urls, release notes from a well-formed response', () => {
-    const info = parseReleaseResponse(fixture)
+  it('extracts highest semver tag from a list', () => {
+    const info = parseLatestTag(
+      [{ name: 'v1.0.0' }, { name: 'v1.2.0' }, { name: 'v1.1.0' }],
+      repo
+    )
     expect(info.version).toBe('1.2.0')
-    expect(info.releaseName).toBe('v1.2.0 notes')
-    expect(info.releaseUrl).toBe(
-      'https://github.com/ChrisWoo0443/MINT/releases/tag/v1.2.0'
+    expect(info.releaseUrl).toBe('https://github.com/ChrisWoo0443/MINT/tree/v1.2.0')
+  })
+
+  it('ignores non-semver tags', () => {
+    const info = parseLatestTag(
+      [{ name: 'nightly' }, { name: 'v1.0.0-beta' }, { name: 'v1.0.0' }],
+      repo
     )
-    expect(info.downloadUrl).toBe(
-      'https://github.com/ChrisWoo0443/MINT/releases/download/v1.2.0/mint-1.2.0.dmg'
-    )
-    expect(info.releaseNotes).toBe('Release notes body')
+    expect(info.version).toBe('1.0.0')
   })
 
-  it('falls back to html_url when no .dmg asset is present', () => {
-    const noDmg = { ...fixture, assets: [fixture.assets[1]] }
-    const info = parseReleaseResponse(noDmg)
-    expect(info.downloadUrl).toBe(fixture.html_url)
+  it('handles tags without v prefix', () => {
+    const info = parseLatestTag([{ name: '1.2.3' }], repo)
+    expect(info.version).toBe('1.2.3')
+    expect(info.releaseUrl).toBe('https://github.com/ChrisWoo0443/MINT/tree/1.2.3')
   })
 
-  it('throws when tag_name is malformed', () => {
-    expect(() => parseReleaseResponse({ ...fixture, tag_name: 'v1.2.0-beta.1' })).toThrow()
-    expect(() => parseReleaseResponse({ ...fixture, tag_name: 'v1.2' })).toThrow()
+  it('throws when list is empty', () => {
+    expect(() => parseLatestTag([], repo)).toThrow()
   })
 
-  it('tolerates empty body', () => {
-    const info = parseReleaseResponse({ ...fixture, body: null })
-    expect(info.releaseNotes).toBe('')
+  it('throws when no valid semver tags present', () => {
+    expect(() => parseLatestTag([{ name: 'nightly' }, { name: 'foo' }], repo)).toThrow()
+  })
+
+  it('throws when input is not an array', () => {
+    expect(() => parseLatestTag({ not: 'an array' }, repo)).toThrow()
   })
 })
 
 describe('UpdateCheckerService', () => {
   const currentVersion = '1.1.0'
+  const repo = 'ChrisWoo0443/MINT'
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  function makeRelease(version: string): {
-    tag_name: string
-    name: string
-    body: string
-    html_url: string
-    assets: Array<{ name: string; browser_download_url: string }>
-  } {
-    return {
-      tag_name: `v${version}`,
-      name: `v${version}`,
-      body: 'notes',
-      html_url: `https://example.com/releases/tag/v${version}`,
-      assets: [
-        {
-          name: `mint-${version}.dmg`,
-          browser_download_url: `https://example.com/releases/download/v${version}/mint-${version}.dmg`
-        }
-      ]
-    }
+  function makeTags(...versions: string[]): Array<{ name: string }> {
+    return versions.map((v) => ({ name: `v${v}` }))
   }
 
   it('starts in idle state when packaged', () => {
@@ -124,16 +97,16 @@ describe('UpdateCheckerService', () => {
     expect(service.getStatus().kind).toBe('disabled')
   })
 
-  it('transitions idle to checking to available for a newer release', async () => {
+  it('transitions idle to checking to available for a newer tag', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => makeRelease('1.2.0')
+      json: async () => makeTags('1.2.0', '1.1.0', '1.0.0')
     })
     vi.stubGlobal('fetch', fetchMock)
 
     const states: string[] = []
-    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
     service.onStatusChange((s: UpdateStatus) => states.push(s.kind))
     await service.checkNow()
 
@@ -142,18 +115,32 @@ describe('UpdateCheckerService', () => {
     expect(status.kind).toBe('available')
     if (status.kind === 'available') {
       expect(status.info.version).toBe('1.2.0')
+      expect(status.info.releaseUrl).toBe('https://github.com/ChrisWoo0443/MINT/tree/v1.2.0')
     }
   })
 
-  it('transitions to up-to-date when tag equals current', async () => {
+  it('transitions to up-to-date when latest tag equals current', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => makeRelease(currentVersion)
+      json: async () => makeTags(currentVersion, '1.0.0')
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('up-to-date')
+  })
+
+  it('transitions to up-to-date when latest tag is older than current', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeTags('1.0.0')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
     await service.checkNow()
     expect(service.getStatus().kind).toBe('up-to-date')
   })
@@ -166,7 +153,7 @@ describe('UpdateCheckerService', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
     await service.checkNow()
     expect(service.getStatus().kind).toBe('error')
   })
@@ -179,7 +166,7 @@ describe('UpdateCheckerService', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
     await service.checkNow()
     expect(service.getStatus().kind).toBe('up-to-date')
   })
@@ -188,20 +175,33 @@ describe('UpdateCheckerService', () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('ETIMEDOUT'))
     vi.stubGlobal('fetch', fetchMock)
 
-    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
     await service.checkNow()
     expect(service.getStatus().kind).toBe('error')
   })
 
-  it('stays up-to-date when tag is malformed', async () => {
+  it('stays up-to-date when tag list is empty', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ ...makeRelease('1.2.0'), tag_name: 'v1.2.0-beta.1' })
+      json: async () => []
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('up-to-date')
+  })
+
+  it('stays up-to-date when no tags are valid semver', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [{ name: 'nightly' }, { name: 'preview' }]
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
     await service.checkNow()
     expect(service.getStatus().kind).toBe('up-to-date')
   })
@@ -210,12 +210,12 @@ describe('UpdateCheckerService', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => makeRelease('1.2.0')
+      json: async () => makeTags('1.2.0')
     })
     vi.stubGlobal('fetch', fetchMock)
 
     const received: string[] = []
-    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true, repo })
     const unsubscribe = service.onStatusChange((s) => received.push(s.kind))
     unsubscribe()
     await service.checkNow()
