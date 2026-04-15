@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
   compareVersions,
-  parseReleaseResponse
+  parseReleaseResponse,
+  UpdateCheckerService,
+  type UpdateStatus
 } from '../src/main/services/update-checker'
 
 describe('compareVersions', () => {
@@ -80,5 +82,137 @@ describe('parseReleaseResponse', () => {
   it('tolerates empty body', () => {
     const info = parseReleaseResponse({ ...fixture, body: null })
     expect(info.releaseNotes).toBe('')
+  })
+})
+
+describe('UpdateCheckerService', () => {
+  const currentVersion = '1.1.0'
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function makeRelease(version: string) {
+    return {
+      tag_name: `v${version}`,
+      name: `v${version}`,
+      body: 'notes',
+      html_url: `https://example.com/releases/tag/v${version}`,
+      assets: [
+        {
+          name: `mint-${version}.dmg`,
+          browser_download_url: `https://example.com/releases/download/v${version}/mint-${version}.dmg`
+        }
+      ]
+    }
+  }
+
+  it('starts in idle state when packaged', () => {
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    expect(service.getStatus().kind).toBe('idle')
+  })
+
+  it('reports disabled when not packaged', async () => {
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: false })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('disabled')
+  })
+
+  it('transitions idle to checking to available for a newer release', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeRelease('1.2.0')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const states: string[] = []
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    service.onStatusChange((s: UpdateStatus) => states.push(s.kind))
+    await service.checkNow()
+
+    expect(states).toEqual(['checking', 'available'])
+    const status = service.getStatus()
+    expect(status.kind).toBe('available')
+    if (status.kind === 'available') {
+      expect(status.info.version).toBe('1.2.0')
+    }
+  })
+
+  it('transitions to up-to-date when tag equals current', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeRelease(currentVersion)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('up-to-date')
+  })
+
+  it('transitions to error on HTTP 500', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('error')
+  })
+
+  it('transitions to up-to-date on HTTP 404', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({})
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('up-to-date')
+  })
+
+  it('transitions to error when fetch rejects', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('ETIMEDOUT'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('error')
+  })
+
+  it('stays up-to-date when tag is malformed', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ...makeRelease('1.2.0'), tag_name: 'v1.2.0-beta.1' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    await service.checkNow()
+    expect(service.getStatus().kind).toBe('up-to-date')
+  })
+
+  it('unsubscribe stops receiving status changes', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => makeRelease('1.2.0')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const received: string[] = []
+    const service = new UpdateCheckerService({ currentVersion, isPackaged: true })
+    const unsubscribe = service.onStatusChange((s) => received.push(s.kind))
+    unsubscribe()
+    await service.checkNow()
+    expect(received).toEqual([])
   })
 })
