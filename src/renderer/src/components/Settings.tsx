@@ -496,7 +496,6 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
           <input
             type="checkbox"
             checked={autoCheckUpdates}
-            disabled={isUpdatesDisabled}
             onChange={(e) => handleToggleAutoCheck(e.target.checked)}
           />
           Automatically check for updates
