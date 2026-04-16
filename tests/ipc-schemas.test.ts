@@ -187,3 +187,19 @@ describe('SetMeetingTagsArgsSchema', () => {
     expect(() => SetMeetingTagsArgsSchema.parse(['m1'])).toThrow()
   })
 })
+
+describe('OllamaUrlSchema — regression: pre-hardening vulnerability', () => {
+  const attackerUrls = [
+    'http://evil.example.com',
+    'https://169.254.169.254/latest/meta-data', // AWS IMDS
+    'file:///etc/passwd',
+    'javascript:alert(1)',
+    'http://localhost.evil.com'
+  ]
+
+  for (const url of attackerUrls) {
+    it(`rejects ${url}`, () => {
+      expect(() => OllamaUrlSchema.parse(url)).toThrow()
+    })
+  }
+})
