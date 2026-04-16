@@ -266,7 +266,11 @@ export class LocalStorageService {
 
   private async readMetadataFile(metadataPath: string): Promise<MeetingMetadata> {
     const rawContent = await readFile(metadataPath, 'utf-8')
-    return JSON.parse(rawContent) as MeetingMetadata
+    try {
+      return JSON.parse(rawContent) as MeetingMetadata
+    } catch {
+      throw new Error(`Corrupted metadata file: ${metadataPath}`)
+    }
   }
 
   private formatTimestamp(seconds: number): string {

@@ -65,7 +65,13 @@ Rules:
 
     const responseText = response.choices[0].message.content || '{}'
     const cleaned = responseText.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '')
-    const parsed = JSON.parse(cleaned) as MeetingNotes
+
+    let parsed: MeetingNotes
+    try {
+      parsed = JSON.parse(cleaned) as MeetingNotes
+    } catch {
+      parsed = { summary: cleaned, decisions: [], actionItems: [] }
+    }
 
     return {
       notes: parsed,
