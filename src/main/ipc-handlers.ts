@@ -10,6 +10,16 @@ import { LocalWhisperService } from './services/local-whisper'
 import { WhisperEngine } from './services/whisper-engine'
 import type { TranscriptionService } from './services/transcription'
 import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
+import { z } from 'zod'
+import {
+  MeetingIdSchema,
+  StoragePathSchema,
+  ShellPathSchema,
+  ExternalUrlSchema,
+  OllamaUrlSchema,
+  WhisperModelSchema,
+  RenameMeetingArgsSchema
+} from './ipc-schemas'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): {
   updateCheckerService: UpdateCheckerService
@@ -55,8 +65,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('storage:getPath', () => localStorageService.getStoragePath())
 
-  ipcMain.handle('storage:setPath', (_event, newPath: string) =>
-    localStorageService.setStoragePath(newPath)
+  ipcMain.handle('storage:setPath', (_event, newPath: unknown) =>
+    localStorageService.setStoragePath(StoragePathSchema.parse(newPath))
   )
 
   ipcMain.handle('storage:pickFolder', async () => {
@@ -72,17 +82,18 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('meetings:list', async () => localStorageService.listMeetings())
 
-  ipcMain.handle('meetings:get', async (_event, meetingId: string) =>
-    localStorageService.getMeeting(meetingId)
+  ipcMain.handle('meetings:get', async (_event, meetingId: unknown) =>
+    localStorageService.getMeeting(MeetingIdSchema.parse(meetingId))
   )
 
-  ipcMain.handle('meetings:delete', async (_event, meetingId: string) =>
-    localStorageService.deleteMeeting(meetingId)
+  ipcMain.handle('meetings:delete', async (_event, meetingId: unknown) =>
+    localStorageService.deleteMeeting(MeetingIdSchema.parse(meetingId))
   )
 
-  ipcMain.handle('meetings:rename', async (_event, meetingId: string, newTitle: string) =>
-    localStorageService.renameMeeting(meetingId, newTitle)
-  )
+  ipcMain.handle('meetings:rename', async (_event, meetingId: unknown, newTitle: unknown) => {
+    const [id, title] = RenameMeetingArgsSchema.parse([meetingId, newTitle])
+    return localStorageService.renameMeeting(id, title)
+  })
 
   ipcMain.handle('tags:get', async () => localStorageService.getTags())
 
@@ -96,12 +107,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     localStorageService.setMeetingTags(meetingId, tagIds)
   )
 
-  ipcMain.handle('meetings:getNotes', async (_event, meetingId: string) =>
-    localStorageService.getNote(meetingId)
+  ipcMain.handle('meetings:getNotes', async (_event, meetingId: unknown) =>
+    localStorageService.getNote(MeetingIdSchema.parse(meetingId))
   )
 
-  ipcMain.handle('meetings:getTranscripts', async (_event, meetingId: string) =>
-    localStorageService.getTranscripts(meetingId)
+  ipcMain.handle('meetings:getTranscripts', async (_event, meetingId: unknown) =>
+    localStorageService.getTranscripts(MeetingIdSchema.parse(meetingId))
   )
 
   // --- Recording handlers ---
@@ -309,10 +320,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   // --- Ollama handler ---
 
-  ipcMain.handle('ollama:listModels', async (_event, url: string) => {
+  ipcMain.handle('ollama:listModels', async (_event, url: unknown) => {
     try {
-      console.log('[MINT] Fetching Ollama models from:', url)
-      const response = await fetch(`${url}/api/tags`)
+      const safeUrl = OllamaUrlSchema.parse(url)
+      console.log('[MINT] Fetching Ollama models from:', safeUrl)
+      const response = await fetch(`${safeUrl}/api/tags`)
       if (!response.ok) throw new Error('Failed to fetch')
       const data = await response.json()
       const models = (data.models || []).map((m: { name: string }) => m.name)
@@ -328,20 +340,21 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('whisper:listModels', async () => whisperModelManager.listModels())
 
-  ipcMain.handle('whisper:getModelStatus', async (_event, name: ModelName) =>
-    whisperModelManager.getModelStatus(name)
+  ipcMain.handle('whisper:getModelStatus', async (_event, name: unknown) =>
+    whisperModelManager.getModelStatus(WhisperModelSchema.parse(name))
   )
 
-  ipcMain.handle('whisper:downloadModel', async (_event, name: ModelName) => {
-    await whisperModelManager.downloadModel(name, (progress) => {
+  ipcMain.handle('whisper:downloadModel', async (_event, name: unknown) => {
+    const modelName = WhisperModelSchema.parse(name)
+    await whisperModelManager.downloadModel(modelName, (progress) => {
       for (const wc of webContents.getAllWebContents()) {
         wc.send('whisper:download:progress', progress)
       }
     })
   })
 
-  ipcMain.handle('whisper:deleteModel', async (_event, name: ModelName) =>
-    whisperModelManager.deleteModel(name)
+  ipcMain.handle('whisper:deleteModel', async (_event, name: unknown) =>
+    whisperModelManager.deleteModel(WhisperModelSchema.parse(name))
   )
 
   // --- Update checker handlers ---
@@ -352,24 +365,24 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     await updateCheckerService.checkNow()
   })
 
-  ipcMain.handle('updates:setAutoCheck', (_event, enabled: boolean) => {
-    updateCheckerService.setAutoCheck(enabled)
+  ipcMain.handle('updates:setAutoCheck', (_event, enabled: unknown) => {
+    updateCheckerService.setAutoCheck(z.boolean().parse(enabled))
   })
 
-  ipcMain.handle('updates:openExternal', async (_event, url: string) => {
-    await shell.openExternal(url)
+  ipcMain.handle('updates:openExternal', async (_event, url: unknown) => {
+    await shell.openExternal(ExternalUrlSchema.parse(url))
   })
 
   ipcMain.handle('app:getVersion', () => app.getVersion())
 
   // --- Shell handlers ---
 
-  ipcMain.handle('shell:openExternal', async (_event, url: string) => {
-    await shell.openExternal(url)
+  ipcMain.handle('shell:openExternal', async (_event, url: unknown) => {
+    await shell.openExternal(ExternalUrlSchema.parse(url))
   })
 
-  ipcMain.handle('shell:openApp', async (_event, appPath: string) => {
-    await shell.openPath(appPath)
+  ipcMain.handle('shell:openApp', async (_event, appPath: unknown) => {
+    await shell.openPath(ShellPathSchema.parse(appPath))
   })
 
   return { updateCheckerService }
