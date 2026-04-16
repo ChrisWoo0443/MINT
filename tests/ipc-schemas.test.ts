@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   MeetingIdSchema,
   StoragePathSchema,
-  ShellPathSchema
+  ShellPathSchema,
+  ExternalUrlSchema,
+  OllamaUrlSchema
 } from '../src/main/ipc-schemas'
 
 describe('MeetingIdSchema', () => {
@@ -46,5 +48,46 @@ describe('ShellPathSchema', () => {
 
   it('rejects empty string', () => {
     expect(() => ShellPathSchema.parse('')).toThrow()
+  })
+})
+
+describe('ExternalUrlSchema', () => {
+  it('accepts https url', () => {
+    expect(ExternalUrlSchema.parse('https://example.com/x')).toBe('https://example.com/x')
+  })
+
+  it('accepts http url', () => {
+    expect(ExternalUrlSchema.parse('http://example.com')).toBe('http://example.com')
+  })
+
+  it('rejects javascript: url', () => {
+    expect(() => ExternalUrlSchema.parse('javascript:alert(1)')).toThrow()
+  })
+
+  it('rejects file: url', () => {
+    expect(() => ExternalUrlSchema.parse('file:///etc/passwd')).toThrow()
+  })
+
+  it('rejects malformed url', () => {
+    expect(() => ExternalUrlSchema.parse('not a url')).toThrow()
+    expect(() => ExternalUrlSchema.parse('')).toThrow()
+  })
+})
+
+describe('OllamaUrlSchema', () => {
+  it('accepts http localhost', () => {
+    expect(OllamaUrlSchema.parse('http://localhost:11434')).toBe('http://localhost:11434')
+  })
+
+  it('accepts http 127.0.0.1', () => {
+    expect(OllamaUrlSchema.parse('http://127.0.0.1:11434')).toBe('http://127.0.0.1:11434')
+  })
+
+  it('rejects non-loopback host', () => {
+    expect(() => OllamaUrlSchema.parse('http://evil.example.com')).toThrow()
+  })
+
+  it('rejects javascript: url', () => {
+    expect(() => OllamaUrlSchema.parse('javascript:alert(1)')).toThrow()
   })
 })
