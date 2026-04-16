@@ -4,7 +4,12 @@ import {
   StoragePathSchema,
   ShellPathSchema,
   ExternalUrlSchema,
-  OllamaUrlSchema
+  OllamaUrlSchema,
+  WhisperModelSchema,
+  RecordingStartArgsSchema,
+  GenerateNotesArgsSchema,
+  TagsArraySchema,
+  SetMeetingTagsArgsSchema
 } from '../src/main/ipc-schemas'
 
 describe('MeetingIdSchema', () => {
@@ -89,5 +94,96 @@ describe('OllamaUrlSchema', () => {
 
   it('rejects javascript: url', () => {
     expect(() => OllamaUrlSchema.parse('javascript:alert(1)')).toThrow()
+  })
+})
+
+describe('WhisperModelSchema', () => {
+  it('accepts each known model name', () => {
+    for (const name of ['tiny.en', 'base.en', 'small.en', 'medium.en']) {
+      expect(WhisperModelSchema.parse(name)).toBe(name)
+    }
+  })
+
+  it('rejects unknown model name', () => {
+    expect(() => WhisperModelSchema.parse('gpt-4')).toThrow()
+  })
+})
+
+describe('RecordingStartArgsSchema', () => {
+  it('accepts minimal valid input', () => {
+    const args = { title: 'Team sync', userName: 'Chris' }
+    expect(RecordingStartArgsSchema.parse(args)).toMatchObject(args)
+  })
+
+  it('accepts full input with optional fields', () => {
+    const args = {
+      title: 'Team sync',
+      userName: 'Chris',
+      micDeviceId: 'abc',
+      deepgramApiKey: 'k',
+      openaiApiKey: 'k',
+      notesProvider: 'ollama' as const,
+      ollamaUrl: 'http://localhost:11434',
+      ollamaModel: 'llama3',
+      transcriptionProvider: 'local' as const,
+      whisperModel: 'small.en' as const
+    }
+    expect(RecordingStartArgsSchema.parse(args).ollamaUrl).toBe('http://localhost:11434')
+  })
+
+  it('rejects missing title', () => {
+    expect(() => RecordingStartArgsSchema.parse({ userName: 'Chris' })).toThrow()
+  })
+
+  it('rejects unknown notesProvider', () => {
+    expect(() =>
+      RecordingStartArgsSchema.parse({ title: 't', userName: 'u', notesProvider: 'bogus' })
+    ).toThrow()
+  })
+
+  it('rejects non-loopback ollamaUrl', () => {
+    expect(() =>
+      RecordingStartArgsSchema.parse({
+        title: 't',
+        userName: 'u',
+        ollamaUrl: 'http://evil.example.com'
+      })
+    ).toThrow()
+  })
+})
+
+describe('GenerateNotesArgsSchema', () => {
+  it('accepts minimal input', () => {
+    expect(GenerateNotesArgsSchema.parse({ meetingId: 'm1' }).meetingId).toBe('m1')
+  })
+
+  it('rejects empty meetingId', () => {
+    expect(() => GenerateNotesArgsSchema.parse({ meetingId: '' })).toThrow()
+  })
+})
+
+describe('TagsArraySchema', () => {
+  it('accepts valid tag array', () => {
+    const tags = [{ id: 't1', name: 'Urgent', color: '#ff0000' }]
+    expect(TagsArraySchema.parse(tags)).toEqual(tags)
+  })
+
+  it('rejects missing color', () => {
+    expect(() => TagsArraySchema.parse([{ id: 't1', name: 'Urgent' }])).toThrow()
+  })
+
+  it('rejects non-array input', () => {
+    expect(() => TagsArraySchema.parse('not an array')).toThrow()
+  })
+})
+
+describe('SetMeetingTagsArgsSchema', () => {
+  it('accepts tuple of meetingId and tag ids', () => {
+    const parsed = SetMeetingTagsArgsSchema.parse(['m1', ['t1', 't2']])
+    expect(parsed).toEqual(['m1', ['t1', 't2']])
+  })
+
+  it('rejects when tag ids missing', () => {
+    expect(() => SetMeetingTagsArgsSchema.parse(['m1'])).toThrow()
   })
 })
