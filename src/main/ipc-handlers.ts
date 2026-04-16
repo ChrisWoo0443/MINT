@@ -18,7 +18,11 @@ import {
   ExternalUrlSchema,
   OllamaUrlSchema,
   WhisperModelSchema,
-  RenameMeetingArgsSchema
+  RenameMeetingArgsSchema,
+  RecordingStartArgsSchema,
+  GenerateNotesArgsSchema,
+  TagsArraySchema,
+  SetMeetingTagsArgsSchema
 } from './ipc-schemas'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): {
@@ -97,15 +101,14 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('tags:get', async () => localStorageService.getTags())
 
-  ipcMain.handle(
-    'tags:save',
-    async (_event, tags: Array<{ id: string; name: string; color: string }>) =>
-      localStorageService.saveTags(tags)
+  ipcMain.handle('tags:save', async (_event, tags: unknown) =>
+    localStorageService.saveTags(TagsArraySchema.parse(tags))
   )
 
-  ipcMain.handle('meetings:setTags', async (_event, meetingId: string, tagIds: string[]) =>
-    localStorageService.setMeetingTags(meetingId, tagIds)
-  )
+  ipcMain.handle('meetings:setTags', async (_event, meetingId: unknown, tagIds: unknown) => {
+    const [id, ids] = SetMeetingTagsArgsSchema.parse([meetingId, tagIds])
+    return localStorageService.setMeetingTags(id, ids)
+  })
 
   ipcMain.handle('meetings:getNotes', async (_event, meetingId: unknown) =>
     localStorageService.getNote(MeetingIdSchema.parse(meetingId))
@@ -117,23 +120,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   // --- Recording handlers ---
 
-  ipcMain.handle(
-    'recording:start',
-    async (
-      _event,
-      args: {
-        title: string
-        userName: string
-        micDeviceId?: string
-        deepgramApiKey?: string
-        openaiApiKey?: string
-        notesProvider?: 'openai' | 'ollama'
-        ollamaUrl?: string
-        ollamaModel?: string
-        transcriptionProvider?: 'local' | 'deepgram'
-        whisperModel?: ModelName
-      }
-    ) => {
+  ipcMain.handle('recording:start', async (_event, rawArgs: unknown) => {
+    const args = RecordingStartArgsSchema.parse(rawArgs)
       try {
         const { title, userName } = args
         currentMeetingId = await localStorageService.createMeeting(title)
@@ -240,18 +228,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'stopped')
   })
 
-  ipcMain.handle(
-    'meetings:generateNotes',
-    async (
-      _event,
-      args: {
-        meetingId: string
-        openaiApiKey?: string
-        notesProvider?: 'openai' | 'ollama'
-        ollamaUrl?: string
-        ollamaModel?: string
-      }
-    ) => {
+  ipcMain.handle('meetings:generateNotes', async (_event, rawArgs: unknown) => {
+    const args = GenerateNotesArgsSchema.parse(rawArgs)
       const { meetingId } = args
       const openaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
       const notesProvider = args.notesProvider || 'openai'
