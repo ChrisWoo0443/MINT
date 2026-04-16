@@ -122,89 +122,86 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('recording:start', async (_event, rawArgs: unknown) => {
     const args = RecordingStartArgsSchema.parse(rawArgs)
-      try {
-        const { title, userName } = args
-        currentMeetingId = await localStorageService.createMeeting(title)
+    try {
+      const { title, userName } = args
+      currentMeetingId = await localStorageService.createMeeting(title)
 
-        const handleTranscript = async (result: {
-          speaker: string | null
-          content: string
-          timestampStart: number
-          timestampEnd: number
-          isFinal: boolean
-        }): Promise<void> => {
-          for (const wc of webContents.getAllWebContents()) {
-            wc.send('transcript:chunk', result)
-          }
-          if (result.isFinal && currentMeetingId) {
-            try {
-              await localStorageService.insertTranscriptChunk(
-                currentMeetingId,
-                result.speaker,
-                result.content,
-                result.timestampStart,
-                result.timestampEnd
-              )
-            } catch (insertError) {
-              console.error('Failed to insert transcript chunk:', insertError)
-            }
-          }
+      const handleTranscript = async (result: {
+        speaker: string | null
+        content: string
+        timestampStart: number
+        timestampEnd: number
+        isFinal: boolean
+      }): Promise<void> => {
+        for (const wc of webContents.getAllWebContents()) {
+          wc.send('transcript:chunk', result)
         }
-
-        const provider = args.transcriptionProvider ?? 'local'
-
-        if (provider === 'local') {
-          const modelName: ModelName = args.whisperModel ?? 'small.en'
-          const status = await whisperModelManager.getModelStatus(modelName)
-          if (status !== 'ready') {
-            throw new Error(
-              `Whisper model "${modelName}" is not downloaded. Download it in Settings first.`
+        if (result.isFinal && currentMeetingId) {
+          try {
+            await localStorageService.insertTranscriptChunk(
+              currentMeetingId,
+              result.speaker,
+              result.content,
+              result.timestampStart,
+              result.timestampEnd
             )
+          } catch (insertError) {
+            console.error('Failed to insert transcript chunk:', insertError)
           }
-          const engine = await ensureWhisperEngine(modelName)
-          micTranscriptionService = new LocalWhisperService(engine)
-          systemTranscriptionService = new LocalWhisperService(engine)
-        } else {
-          micTranscriptionService = new DeepgramService()
-          systemTranscriptionService = new DeepgramService()
         }
+      }
 
-        const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
+      const provider = args.transcriptionProvider ?? 'local'
 
-        await micTranscriptionService.startStreaming(
+      if (provider === 'local') {
+        const modelName: ModelName = args.whisperModel ?? 'small.en'
+        const status = await whisperModelManager.getModelStatus(modelName)
+        if (status !== 'ready') {
+          throw new Error(
+            `Whisper model "${modelName}" is not downloaded. Download it in Settings first.`
+          )
+        }
+        const engine = await ensureWhisperEngine(modelName)
+        micTranscriptionService = new LocalWhisperService(engine)
+        systemTranscriptionService = new LocalWhisperService(engine)
+      } else {
+        micTranscriptionService = new DeepgramService()
+        systemTranscriptionService = new DeepgramService()
+      }
+
+      const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
+
+      await micTranscriptionService.startStreaming({ deepgramApiKey }, userName, handleTranscript)
+      console.log(
+        `[MINT] Mic transcription started (provider: ${provider}, speaker: "${userName}")`
+      )
+
+      try {
+        await systemTranscriptionService.startStreaming(
           { deepgramApiKey },
-          userName,
+          'Meeting Users',
           handleTranscript
         )
-        console.log(`[MINT] Mic transcription started (provider: ${provider}, speaker: "${userName}")`)
-
-        try {
-          await systemTranscriptionService.startStreaming(
-            { deepgramApiKey },
-            'Meeting Users',
-            handleTranscript
-          )
-          console.log(
-            `[MINT] System audio transcription started (provider: ${provider}, speaker: "Meeting Users")`
-          )
-          await audioTeeService.start((chunk) => {
-            systemTranscriptionService?.sendAudio(chunk)
-          })
-        } catch (systemError) {
-          console.warn('[MINT] System audio transcription unavailable:', systemError)
-        }
-
-        for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'recording')
-        const micDeviceId = args.micDeviceId || 'default'
-        audioCaptureService.startCapture(mainWindow, { micDeviceId })
-      } catch (startError) {
-        console.error('Failed to start recording:', startError)
-        currentMeetingId = null
-        for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'error')
-        throw startError
+        console.log(
+          `[MINT] System audio transcription started (provider: ${provider}, speaker: "Meeting Users")`
+        )
+        await audioTeeService.start((chunk) => {
+          systemTranscriptionService?.sendAudio(chunk)
+        })
+      } catch (systemError) {
+        console.warn('[MINT] System audio transcription unavailable:', systemError)
       }
+
+      for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'recording')
+      const micDeviceId = args.micDeviceId || 'default'
+      audioCaptureService.startCapture(mainWindow, { micDeviceId })
+    } catch (startError) {
+      console.error('Failed to start recording:', startError)
+      currentMeetingId = null
+      for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'error')
+      throw startError
     }
-  )
+  })
 
   ipcMain.handle('recording:stop', async () => {
     audioCaptureService.stopCapture(mainWindow)
@@ -230,57 +227,56 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('meetings:generateNotes', async (_event, rawArgs: unknown) => {
     const args = GenerateNotesArgsSchema.parse(rawArgs)
-      const { meetingId } = args
-      const openaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
-      const notesProvider = args.notesProvider || 'openai'
-      const ollamaUrl = args.ollamaUrl || 'http://localhost:11434'
-      const ollamaModel = args.ollamaModel || ''
+    const { meetingId } = args
+    const openaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
+    const notesProvider = args.notesProvider || 'openai'
+    const ollamaUrl = args.ollamaUrl || 'http://localhost:11434'
+    const ollamaModel = args.ollamaModel || ''
 
-      try {
-        await localStorageService.updateMeetingStatus(meetingId, 'processing')
+    try {
+      await localStorageService.updateMeetingStatus(meetingId, 'processing')
 
-        const fullTranscript = await localStorageService.getFullTranscript(meetingId)
+      const fullTranscript = await localStorageService.getFullTranscript(meetingId)
 
-        if (!fullTranscript.trim()) {
-          await localStorageService.updateMeetingStatus(
-            meetingId,
-            'completed',
-            new Date().toISOString()
-          )
-          throw new Error('No transcript available to generate notes from.')
-        }
-
-        const openaiService =
-          notesProvider === 'ollama'
-            ? new OpenAIService({
-                provider: 'ollama',
-                ollamaUrl: ollamaUrl,
-                ollamaModel: ollamaModel
-              })
-            : new OpenAIService({ provider: 'openai', apiKey: openaiApiKey })
-        const { notes } = await openaiService.generateNotes(fullTranscript)
-
-        await localStorageService.saveNotes(
-          meetingId,
-          notes.summary,
-          notes.decisions,
-          notes.actionItems
-        )
-
+      if (!fullTranscript.trim()) {
         await localStorageService.updateMeetingStatus(
           meetingId,
           'completed',
           new Date().toISOString()
         )
-
-        return notes
-      } catch (error) {
-        console.error('Failed to generate notes:', error)
-        await localStorageService.updateMeetingStatus(meetingId, 'completed')
-        throw error
+        throw new Error('No transcript available to generate notes from.')
       }
+
+      const openaiService =
+        notesProvider === 'ollama'
+          ? new OpenAIService({
+              provider: 'ollama',
+              ollamaUrl: ollamaUrl,
+              ollamaModel: ollamaModel
+            })
+          : new OpenAIService({ provider: 'openai', apiKey: openaiApiKey })
+      const { notes } = await openaiService.generateNotes(fullTranscript)
+
+      await localStorageService.saveNotes(
+        meetingId,
+        notes.summary,
+        notes.decisions,
+        notes.actionItems
+      )
+
+      await localStorageService.updateMeetingStatus(
+        meetingId,
+        'completed',
+        new Date().toISOString()
+      )
+
+      return notes
+    } catch (error) {
+      console.error('Failed to generate notes:', error)
+      await localStorageService.updateMeetingStatus(meetingId, 'completed')
+      throw error
     }
-  )
+  })
 
   // --- Audio handlers ---
 
