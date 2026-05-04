@@ -247,6 +247,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         throw new Error('No transcript available to generate notes from.')
       }
 
+      const meetingMeta = await localStorageService.getMeeting(meetingId)
       const openaiService =
         notesProvider === 'ollama'
           ? new OpenAIService({
@@ -255,7 +256,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
               ollamaModel: ollamaModel
             })
           : new OpenAIService({ provider: 'openai', apiKey: openaiApiKey })
-      const { notes } = await openaiService.generateNotes(fullTranscript)
+      const { notes } = await openaiService.generateNotes(fullTranscript, {
+        title: meetingMeta.title,
+        startedAt: meetingMeta.startedAt
+      })
 
       await localStorageService.saveNotes(
         meetingId,

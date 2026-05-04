@@ -6,11 +6,62 @@ export interface MeetingNotes {
   actionItems: Array<{ task: string; assignee?: string; dueDate?: string }>
 }
 
+export interface MeetingContext {
+  title: string
+  startedAt: string
+}
+
 interface NotesServiceOptions {
   provider: 'openai' | 'ollama'
   apiKey?: string
   ollamaUrl?: string
   ollamaModel?: string
+}
+
+const SYSTEM_PROMPT = `You are a meeting notes assistant. Analyze the meeting transcript and produce structured notes.
+
+Return a JSON object with exactly this shape:
+{
+  "summary": "string",
+  "decisions": ["string"],
+  "actionItems": [{"task": "string", "assignee": "string or null", "dueDate": "string or null"}]
+}
+
+Guidelines:
+- summary: 3–6 sentences covering the meeting purpose, main discussion points, and outcome. Do not pad.
+- decisions: things the group explicitly resolved or concluded (e.g. "We will use Postgres"). Distinct from tasks.
+- actionItems: concrete work to be done by a specific person or the team. Each item needs a task description; include assignee and dueDate only if explicitly stated — never infer them.
+- Only include information explicitly stated in the transcript. Do not speculate or fill in details that were not said.
+- Return ONLY valid JSON, no markdown fences.`
+
+const NOTES_SCHEMA = {
+  type: 'json_schema' as const,
+  json_schema: {
+    name: 'meeting_notes',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        summary: { type: 'string' },
+        decisions: { type: 'array', items: { type: 'string' } },
+        actionItems: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              task: { type: 'string' },
+              assignee: { type: ['string', 'null'] },
+              dueDate: { type: ['string', 'null'] }
+            },
+            required: ['task', 'assignee', 'dueDate'],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ['summary', 'decisions', 'actionItems'],
+      additionalProperties: false
+    }
+  }
 }
 
 export class OpenAIService {
@@ -31,36 +82,24 @@ export class OpenAIService {
     }
   }
 
-  async generateNotes(transcript: string): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
-    const useJsonFormat = this.model === 'gpt-4o'
+  async generateNotes(
+    transcript: string,
+    context?: MeetingContext
+  ): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
+    const useStructuredOutput = this.model === 'gpt-4o'
+
+    const userContent = context
+      ? `Meeting: ${context.title}\nStarted: ${context.startedAt}\n\n${transcript}`
+      : transcript
 
     const response = await this.client.chat.completions.create({
       model: this.model,
+      temperature: 0.2,
       messages: [
-        {
-          role: 'system',
-          content: `You are a meeting notes assistant. Analyze meeting transcripts and produce structured notes.
-
-Return a JSON object with exactly this shape:
-{
-  "summary": "An executive summary of the meeting in 2-4 paragraphs",
-  "decisions": ["Decision 1", "Decision 2"],
-  "actionItems": [{"task": "Description", "assignee": "Person or null", "dueDate": "Date or null"}]
-}
-
-Rules:
-- Summary should capture the key discussion points and outcomes
-- Extract every decision that was made, even implicit ones
-- Extract every action item, task, or follow-up mentioned
-- If an assignee or due date is mentioned, include them
-- Return ONLY valid JSON, no markdown fences`
-        },
-        {
-          role: 'user',
-          content: transcript
-        }
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userContent }
       ],
-      ...(useJsonFormat ? { response_format: { type: 'json_object' as const } } : {})
+      ...(useStructuredOutput ? { response_format: NOTES_SCHEMA } : { response_format: { type: 'json_object' as const } })
     })
 
     const responseText = response.choices[0].message.content || '{}'

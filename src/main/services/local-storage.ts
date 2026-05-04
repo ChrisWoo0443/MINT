@@ -121,7 +121,9 @@ export class LocalStorageService {
   async getFullTranscript(meetingId: string): Promise<string> {
     const buffer = this.transcriptBuffers.get(meetingId)
     if (buffer && buffer.length > 0) {
-      return buffer.map((entry) => `${entry.speaker ?? 'Unknown'}: ${entry.content}`).join('\n')
+      return buffer
+        .map((entry) => `[${this.formatTimestamp(entry.timestampStart)}] ${entry.speaker ?? 'Unknown'}: ${entry.content}`)
+        .join('\n')
     }
 
     return this.parseTranscriptFileAsPlainText(meetingId)
