@@ -5,7 +5,6 @@ import { LiveRecording } from './components/LiveRecording'
 import { OverlayRecording } from './components/OverlayRecording'
 import { Settings } from './components/Settings'
 import { AudioSetup } from './components/AudioSetup'
-import { UpdateBanner } from './components/UpdateBanner'
 
 type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
@@ -154,7 +153,6 @@ function MainApp(): React.JSX.Element {
 
   return (
     <>
-      <UpdateBanner />
       <div className="app-layout">
         <nav className="sidebar">
           <button
