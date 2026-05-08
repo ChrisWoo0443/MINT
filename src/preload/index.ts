@@ -90,6 +90,7 @@ interface MintAPI {
   openApp: (appPath: string) => Promise<string>
   listOllamaModels: (url: string) => Promise<string[] | null>
   listMeetings: () => Promise<MeetingMetadata[]>
+  searchMeetings: (query: string) => Promise<MeetingMetadata[]>
   getMeeting: (meetingId: string) => Promise<MeetingMetadata>
   deleteMeeting: (meetingId: string) => Promise<void>
   renameMeeting: (meetingId: string, newTitle: string) => Promise<void>
@@ -164,6 +165,7 @@ const mintAPI: MintAPI = {
   listOllamaModels: (url: string) => ipcRenderer.invoke('ollama:listModels', url),
 
   listMeetings: () => ipcRenderer.invoke('meetings:list'),
+  searchMeetings: (query: string) => ipcRenderer.invoke('meetings:search', query),
   getMeeting: (meetingId: string) => ipcRenderer.invoke('meetings:get', meetingId),
   deleteMeeting: (meetingId: string) => ipcRenderer.invoke('meetings:delete', meetingId),
   renameMeeting: (meetingId: string, newTitle: string) =>

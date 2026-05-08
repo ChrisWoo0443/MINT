@@ -22,7 +22,8 @@ import {
   RecordingStartArgsSchema,
   GenerateNotesArgsSchema,
   TagsArraySchema,
-  SetMeetingTagsArgsSchema
+  SetMeetingTagsArgsSchema,
+  SearchQuerySchema
 } from './ipc-schemas'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): {
@@ -85,6 +86,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   // --- Meeting data handlers ---
 
   ipcMain.handle('meetings:list', async () => localStorageService.listMeetings())
+
+  ipcMain.handle('meetings:search', async (_event, query: unknown) =>
+    localStorageService.searchMeetings(SearchQuerySchema.parse(query))
+  )
 
   ipcMain.handle('meetings:get', async (_event, meetingId: unknown) =>
     localStorageService.getMeeting(MeetingIdSchema.parse(meetingId))

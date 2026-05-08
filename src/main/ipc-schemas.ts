@@ -82,3 +82,5 @@ export const SetMeetingTagsArgsSchema = z.tuple([
 ])
 
 export const RenameMeetingArgsSchema = z.tuple([MeetingIdSchema, MeetingTitleSchema])
+
+export const SearchQuerySchema = z.string().max(MAX_NAME_LEN)

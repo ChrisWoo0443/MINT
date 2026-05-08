@@ -188,6 +188,40 @@ export class LocalStorageService {
     return meetings
   }
 
+  async searchMeetings(query: string): Promise<MeetingMetadata[]> {
+    if (!query.trim()) return []
+
+    const needle = query.toLowerCase()
+    const meetings = await this.listMeetings()
+    const results: MeetingMetadata[] = []
+
+    for (const meeting of meetings) {
+      if (meeting.title.toLowerCase().includes(needle)) {
+        results.push(meeting)
+        continue
+      }
+
+      const meetingDir = join(this.storagePath, meeting.id)
+      let matched = false
+
+      for (const filename of ['transcript.md', 'notes.md']) {
+        try {
+          const content = await readFile(join(meetingDir, filename), 'utf-8')
+          if (content.toLowerCase().includes(needle)) {
+            matched = true
+            break
+          }
+        } catch {
+          // file may not exist yet
+        }
+      }
+
+      if (matched) results.push(meeting)
+    }
+
+    return results
+  }
+
   async getMeeting(meetingId: string): Promise<MeetingMetadata> {
     const metadataPath = join(this.storagePath, meetingId, 'metadata.json')
     return this.readMetadataFile(metadataPath)
