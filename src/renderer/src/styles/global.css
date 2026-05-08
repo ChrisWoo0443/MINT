@@ -1544,3 +1544,28 @@ label {
   margin-top: 12px;
   cursor: pointer;
 }
+
+/* ----- Search Highlight ----- */
+
+.search-highlight {
+  background: rgba(255, 213, 79, 0.85);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 3px;
+  animation: search-highlight-fade 4s ease-out forwards;
+}
+
+@keyframes search-highlight-fade {
+  0% {
+    background: rgba(255, 213, 79, 0.95);
+    box-shadow: 0 0 0 2px rgba(255, 213, 79, 0.5);
+  }
+  60% {
+    background: rgba(255, 213, 79, 0.7);
+    box-shadow: 0 0 0 0 rgba(255, 213, 79, 0);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}

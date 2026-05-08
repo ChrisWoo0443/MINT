@@ -22,7 +22,7 @@ interface CustomSection {
 }
 
 interface MeetingListProps {
-  onSelectMeeting: (meetingId: string) => void
+  onSelectMeeting: (meetingId: string, searchQuery?: string) => void
   onStartRecording: () => void
 }
 
@@ -365,7 +365,7 @@ export function MeetingList({
                 key={meeting.id}
                 meeting={meeting}
                 availableTags={availableTags}
-                onClick={() => onSelectMeeting(meeting.id)}
+                onClick={() => onSelectMeeting(meeting.id, searchQuery.trim())}
                 onDelete={handleDeleteMeeting}
                 onToggleTag={handleToggleTag}
               />
