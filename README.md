@@ -229,6 +229,20 @@ src/
 
 ## Contributing
 
+Contributions are welcome. For non-trivial changes, please open an issue first so we can align on scope before you write code.
+
+Quick start:
+
+```bash
+git clone https://github.com/ChrisWoo0443/MINT.git
+cd MINT
+npm install
+npm run dev
+```
+
+Before opening a PR, run `npm run typecheck`, `npm run lint`, and `npm test`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide — dev setup, commit conventions, code style, and what's in/out of scope.
+
+Bug reports and feature requests use the templates in [.github/ISSUE_TEMPLATE](.github/ISSUE_TEMPLATE).
 
 ## License
 
