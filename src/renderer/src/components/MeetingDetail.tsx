@@ -181,6 +181,7 @@ export function MeetingDetail({
       const generatedNotes = await window.mintAPI.generateNotes({
         meetingId,
         openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
+        openaiModel: localStorage.getItem('openaiModel') || undefined,
         notesProvider,
         ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
         ollamaModel: localStorage.getItem('ollamaModel') || undefined
