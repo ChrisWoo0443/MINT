@@ -31,6 +31,7 @@ function App(): React.JSX.Element {
 function MainApp(): React.JSX.Element {
   const [view, setView] = useState<View>('meetings')
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null)
+  const [highlightQuery, setHighlightQuery] = useState<string | null>(null)
   const [meetingListKey, setMeetingListKey] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [onboardingComplete, setOnboardingComplete] = useState(
@@ -89,7 +90,13 @@ function MainApp(): React.JSX.Element {
     }
 
     if (view === 'detail' && selectedMeetingId) {
-      return <MeetingDetail meetingId={selectedMeetingId} onBack={() => setView('meetings')} />
+      return (
+        <MeetingDetail
+          meetingId={selectedMeetingId}
+          highlightQuery={highlightQuery}
+          onBack={() => setView('meetings')}
+        />
+      )
     }
 
     if (view === 'settings') {
@@ -110,8 +117,9 @@ function MainApp(): React.JSX.Element {
     return (
       <MeetingList
         key={meetingListKey}
-        onSelectMeeting={(meetingId) => {
+        onSelectMeeting={(meetingId, searchQuery) => {
           setSelectedMeetingId(meetingId)
+          setHighlightQuery(searchQuery && searchQuery.length > 0 ? searchQuery : null)
           setView('detail')
         }}
         onStartRecording={async () => {

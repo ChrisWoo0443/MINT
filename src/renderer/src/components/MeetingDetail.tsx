@@ -32,6 +32,7 @@ type ActiveTab = 'summary' | 'transcript'
 
 interface MeetingDetailProps {
   meetingId: string
+  highlightQuery?: string | null
   onBack: () => void
 }
 
@@ -42,7 +43,40 @@ function formatTimestamp(seconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
 }
 
-export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.JSX.Element {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function HighlightedText({
+  text,
+  query
+}: {
+  text: string
+  query: string | null
+}): React.JSX.Element {
+  if (!query) return <>{text}</>
+  const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi')
+  const parts = text.split(regex)
+  return (
+    <>
+      {parts.map((part, index) =>
+        index % 2 === 1 ? (
+          <mark key={index} className="search-highlight">
+            {part}
+          </mark>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </>
+  )
+}
+
+export function MeetingDetail({
+  meetingId,
+  highlightQuery = null,
+  onBack
+}: MeetingDetailProps): React.JSX.Element {
   const [meeting, setMeeting] = useState<Meeting | null>(null)
   const [notes, setNotes] = useState<Note | null>(null)
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
@@ -53,7 +87,9 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
+  const [activeHighlight, setActiveHighlight] = useState<string | null>(highlightQuery)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const loadMeetingData = useCallback(async (): Promise<void> => {
     const [meetingData, notesData, transcriptsData, tagsData] = await Promise.all([
@@ -76,6 +112,35 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   useEffect(() => {
     if (isEditingTitle) titleInputRef.current?.select()
   }, [isEditingTitle])
+
+  useEffect(() => {
+    if (!activeHighlight || !meeting) return
+    const lowered = activeHighlight.toLowerCase()
+    const summaryHasMatch =
+      notes !== null &&
+      (notes.summary.toLowerCase().includes(lowered) ||
+        notes.decisions.some((decision) => decision.toLowerCase().includes(lowered)) ||
+        notes.actionItems.some((item) => item.task.toLowerCase().includes(lowered)))
+    const transcriptHasMatch = transcripts.some((transcript) =>
+      transcript.content.toLowerCase().includes(lowered)
+    )
+    if (!summaryHasMatch && transcriptHasMatch) setActiveTab('transcript')
+  }, [activeHighlight, meeting, notes, transcripts])
+
+  useEffect(() => {
+    if (!activeHighlight) return
+    const frame = requestAnimationFrame(() => {
+      const firstMatch = contentRef.current?.querySelector('.search-highlight')
+      firstMatch?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [activeHighlight, activeTab, notes, transcripts])
+
+  useEffect(() => {
+    if (!activeHighlight) return
+    const timeout = setTimeout(() => setActiveHighlight(null), 4000)
+    return () => clearTimeout(timeout)
+  }, [activeHighlight])
 
   const startRename = (): void => {
     if (!meeting) return
@@ -141,7 +206,7 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
   }
 
   return (
-    <div className="meeting-detail">
+    <div className="meeting-detail" ref={contentRef}>
       <div className="detail-header-actions">
         <button className="back-button" onClick={onBack}>
           Back to Meetings
@@ -215,7 +280,9 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
             <div className="summary-content">
               <section className="summary-section">
                 <h3>Executive Summary</h3>
-                <p>{notes.summary}</p>
+                <p>
+                  <HighlightedText text={notes.summary} query={activeHighlight} />
+                </p>
               </section>
 
               {notes.decisions.length > 0 && (
@@ -223,7 +290,9 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
                   <h3>Decisions</h3>
                   <ul>
                     {notes.decisions.map((decision, index) => (
-                      <li key={index}>{decision}</li>
+                      <li key={index}>
+                        <HighlightedText text={decision} query={activeHighlight} />
+                      </li>
                     ))}
                   </ul>
                 </section>
@@ -237,9 +306,14 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
                       <li key={index} className="action-item">
                         <label>
                           <input type="checkbox" />
-                          <span>{item.task}</span>
+                          <span>
+                            <HighlightedText text={item.task} query={activeHighlight} />
+                          </span>
                           {item.assignee && (
-                            <span className="action-assignee"> — {item.assignee}</span>
+                            <span className="action-assignee">
+                              {' — '}
+                              <HighlightedText text={item.assignee} query={activeHighlight} />
+                            </span>
                           )}
                           {item.dueDate && (
                             <span className="action-due-date"> (due: {item.dueDate})</span>
@@ -292,7 +366,9 @@ export function MeetingDetail({ meetingId, onBack }: MeetingDetailProps): React.
                     {formatTimestamp(transcript.timestampStart)}
                   </span>
                   <span className="transcript-speaker">{transcript.speaker ?? 'Unknown'}</span>
-                  <span className="transcript-content">{transcript.content}</span>
+                  <span className="transcript-content">
+                    <HighlightedText text={transcript.content} query={activeHighlight} />
+                  </span>
                 </div>
               ))}
             </div>
