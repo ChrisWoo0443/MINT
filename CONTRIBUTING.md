@@ -41,9 +41,7 @@ For UI changes, also run `npm run dev` and exercise the feature in the actual ap
 
 ## Commit conventions
 
-- Atomic, descriptive messages — say what changed, nothing more.
 - No conventional-commit prefixes (no `feat:`, `fix:`, `chore:`, etc.).
-- No co-author trailers.
 - One logical change per commit when reasonable.
 
 Examples:
