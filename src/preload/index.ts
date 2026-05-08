@@ -74,10 +74,13 @@ const mintAPI: MintAPI = {
   generateNotes: (args: {
     meetingId: string
     openaiApiKey?: string
+    openaiModel?: string
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
   }) => ipcRenderer.invoke('meetings:generateNotes', args),
+
+  listOpenAIModels: (apiKey: string) => ipcRenderer.invoke('openai:listModels', apiKey),
 
   whisper: {
     listModels: () => ipcRenderer.invoke('whisper:listModels'),

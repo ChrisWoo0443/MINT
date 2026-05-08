@@ -22,6 +22,7 @@ import {
   RenameMeetingArgsSchema,
   RecordingStartArgsSchema,
   GenerateNotesArgsSchema,
+  OpenAIApiKeyArgSchema,
   TagsArraySchema,
   SetMeetingTagsArgsSchema,
   SearchQuerySchema
@@ -278,6 +279,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     const args = GenerateNotesArgsSchema.parse(rawArgs)
     const { meetingId } = args
     const openaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
+    const openaiModel = args.openaiModel || ''
     const notesProvider = args.notesProvider || 'openai'
     const ollamaUrl = args.ollamaUrl || 'http://localhost:11434'
     const ollamaModel = args.ollamaModel || ''
@@ -304,7 +306,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
               ollamaUrl: ollamaUrl,
               ollamaModel: ollamaModel
             })
-          : new OpenAIService({ provider: 'openai', apiKey: openaiApiKey })
+          : new OpenAIService({
+              provider: 'openai',
+              apiKey: openaiApiKey,
+              openaiModel: openaiModel || undefined
+            })
       const { notes } = await openaiService.generateNotes(fullTranscript, {
         title: meetingMeta.title,
         startedAt: meetingMeta.startedAt
@@ -343,6 +349,19 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('audio:setDevice', async () => {
     // Will be implemented in a future task
+  })
+
+  // --- OpenAI handler ---
+
+  ipcMain.handle('openai:listModels', async (_event, apiKey: unknown) => {
+    try {
+      const safeKey = OpenAIApiKeyArgSchema.parse(apiKey)
+      const models = await OpenAIService.listChatModels(safeKey)
+      return models
+    } catch (error) {
+      console.error('[MINT] OpenAI listModels error:', error)
+      return null
+    }
   })
 
   // --- Ollama handler ---

@@ -53,6 +53,7 @@ export const RecordingStartArgsSchema = z.object({
   micDeviceId: z.string().max(MAX_ID_LEN).optional(),
   deepgramApiKey: ApiKeySchema.optional(),
   openaiApiKey: ApiKeySchema.optional(),
+  openaiModel: z.string().max(MAX_NAME_LEN).optional(),
   notesProvider: z.enum(['openai', 'ollama']).optional(),
   ollamaUrl: OllamaUrlSchema.optional(),
   ollamaModel: z.string().max(MAX_NAME_LEN).optional(),
@@ -63,10 +64,13 @@ export const RecordingStartArgsSchema = z.object({
 export const GenerateNotesArgsSchema = z.object({
   meetingId: MeetingIdSchema,
   openaiApiKey: ApiKeySchema.optional(),
+  openaiModel: z.string().max(MAX_NAME_LEN).optional(),
   notesProvider: z.enum(['openai', 'ollama']).optional(),
   ollamaUrl: OllamaUrlSchema.optional(),
   ollamaModel: z.string().max(MAX_NAME_LEN).optional()
 })
+
+export const OpenAIApiKeyArgSchema = ApiKeySchema
 
 export const TagSchema = z.object({
   id: z.string().min(1).max(MAX_ID_LEN),

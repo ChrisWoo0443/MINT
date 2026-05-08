@@ -14,9 +14,15 @@ export interface MeetingContext {
 interface NotesServiceOptions {
   provider: 'openai' | 'ollama'
   apiKey?: string
+  openaiModel?: string
   ollamaUrl?: string
   ollamaModel?: string
 }
+
+export const DEFAULT_OPENAI_MODEL = 'gpt-4o'
+
+// Models that support OpenAI's strict json_schema structured-output mode.
+const STRUCTURED_OUTPUT_PATTERN = /^(gpt-4o|gpt-4\.1|gpt-5|o[13])/i
 
 const SYSTEM_PROMPT = `You are a meeting notes assistant. Analyze the meeting transcript and produce structured notes.
 
@@ -71,14 +77,14 @@ export class OpenAIService {
   constructor(apiKeyOrOptions: string | NotesServiceOptions) {
     if (typeof apiKeyOrOptions === 'string') {
       this.client = new OpenAI({ apiKey: apiKeyOrOptions })
-      this.model = 'gpt-4o'
+      this.model = DEFAULT_OPENAI_MODEL
     } else if (apiKeyOrOptions.provider === 'ollama') {
       const baseURL = `${apiKeyOrOptions.ollamaUrl || 'http://localhost:11434'}/v1`
       this.client = new OpenAI({ baseURL, apiKey: 'ollama' })
       this.model = apiKeyOrOptions.ollamaModel || 'llama3.2:latest'
     } else {
       this.client = new OpenAI({ apiKey: apiKeyOrOptions.apiKey })
-      this.model = 'gpt-4o'
+      this.model = apiKeyOrOptions.openaiModel || DEFAULT_OPENAI_MODEL
     }
   }
 
@@ -86,7 +92,7 @@ export class OpenAIService {
     transcript: string,
     context?: MeetingContext
   ): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
-    const useStructuredOutput = this.model === 'gpt-4o'
+    const useStructuredOutput = STRUCTURED_OUTPUT_PATTERN.test(this.model)
 
     const userContent = context
       ? `Meeting: ${context.title}\nStarted: ${context.startedAt}\n\n${transcript}`
@@ -116,5 +122,17 @@ export class OpenAIService {
       notes: parsed,
       rawResponse: responseText
     }
+  }
+
+  static async listChatModels(apiKey: string): Promise<string[]> {
+    const client = new OpenAI({ apiKey })
+    const list = await client.models.list()
+    const ids = list.data.map((m) => m.id)
+    // Keep chat-completion families, drop audio/embedding/image/moderation models.
+    const chatPattern = /^(gpt-|o\d|chatgpt-)/i
+    const excludePattern = /(audio|realtime|tts|whisper|embedding|moderation|dall-e|image|search|transcribe)/i
+    return ids
+      .filter((id) => chatPattern.test(id) && !excludePattern.test(id))
+      .sort()
   }
 }

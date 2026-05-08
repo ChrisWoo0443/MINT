@@ -47,6 +47,11 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     () => (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || 'openai'
   )
   const [openaiKey, setOpenaiKey] = useState(() => localStorage.getItem('openaiApiKey') || '')
+  const [openaiModel, setOpenaiModel] = useState(
+    () => localStorage.getItem('openaiModel') || 'gpt-4o'
+  )
+  const [openaiModels, setOpenaiModels] = useState<string[]>([])
+  const [openaiStatus, setOpenaiStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [ollamaUrl, setOllamaUrl] = useState(
     () => localStorage.getItem('ollamaUrl') || 'http://localhost:11434'
   )
@@ -104,6 +109,32 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
       loadOllamaModels(ollamaUrl)
     }
   }, [notesProvider, ollamaUrl, loadOllamaModels])
+
+  const loadOpenAIModels = useCallback(async (key: string): Promise<void> => {
+    if (!key) {
+      setOpenaiModels([])
+      setOpenaiStatus('idle')
+      return
+    }
+    setOpenaiStatus('loading')
+    const models = await window.mintAPI.listOpenAIModels(key)
+    if (models === null) {
+      setOpenaiModels([])
+      setOpenaiStatus('error')
+      return
+    }
+    setOpenaiModels(models)
+    setOpenaiStatus('idle')
+  }, [])
+
+  useEffect(() => {
+    if (notesProvider !== 'openai' || !openaiKey) return
+    // Debounce key changes so we don't fire a request on every keystroke.
+    const handle = window.setTimeout(() => {
+      loadOpenAIModels(openaiKey)
+    }, 600)
+    return () => window.clearTimeout(handle)
+  }, [notesProvider, openaiKey, loadOpenAIModels])
 
   useEffect(() => {
     window.mintAPI.whisper.getModelStatus(whisperModel).then(setWhisperStatus)
@@ -330,6 +361,42 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
               }}
               placeholder="Enter OpenAI API key"
             />
+            <label htmlFor="openai-model">Model</label>
+            {!openaiKey ? (
+              <p className="settings-hint">Enter an API key to load available models.</p>
+            ) : openaiStatus === 'loading' ? (
+              <p className="settings-hint">Loading models...</p>
+            ) : openaiStatus === 'error' ? (
+              <p className="settings-hint" style={{ color: 'var(--color-danger)' }}>
+                Could not load models. Check your API key.
+              </p>
+            ) : (
+              <select
+                id="openai-model"
+                value={openaiModel}
+                onChange={(e) => {
+                  setOpenaiModel(e.target.value)
+                  localStorage.setItem('openaiModel', e.target.value)
+                }}
+              >
+                {/* Always include the saved value as an option so it stays selectable
+                    even if the fetched list temporarily doesn't contain it. */}
+                {openaiModels.length === 0 && <option value={openaiModel}>{openaiModel}</option>}
+                {openaiModels.length > 0 &&
+                  !openaiModels.includes(openaiModel) && (
+                    <option value={openaiModel}>{openaiModel}</option>
+                  )}
+                {openaiModels.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="settings-hint">
+              Defaults to gpt-4o. Newer models with structured-output support produce the most
+              reliable notes.
+            </p>
           </>
         )}
 
