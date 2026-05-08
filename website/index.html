@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MINT — Meeting Intelligence Notes &amp; Transcription</title>
+    <meta
+      name="description"
+      content="MINT is a macOS desktop app that captures meeting audio, transcribes in real time, and generates structured notes — stored locally as Markdown."
+    />
+    <meta name="theme-color" content="#1a1a1e" />
+    <link rel="icon" type="image/png" href="assets/icon.png" />
+    <link rel="apple-touch-icon" href="assets/icon.png" />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="site-header">
+      <div class="container">
+        <a href="index.html" class="brand">
+          <span class="brand-mark"></span>MINT
+          <span class="brand-suffix">v1.1</span>
+        </a>
+        <nav class="nav">
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#install">Install</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/ChrisWoo0443/MINT" class="cta always-show">
+            GitHub
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M7 17L17 7M17 7H8M17 7v9" />
+            </svg>
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-inner">
+          <span class="eyebrow">Meeting Intelligence · macOS</span>
+          <h1 class="display">
+            Record, <em>transcribe</em>, and capture every meeting — locally.
+          </h1>
+          <p class="lede hero-lede">
+            MINT captures your microphone and system audio, transcribes both
+            streams in real time, and generates structured notes — all saved
+            as Markdown on your own machine.
+          </p>
+          <div class="hero-cta">
+            <a href="#install" class="btn btn-primary">
+              Get MINT
+              <svg class="arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </a>
+            <a href="docs.html" class="btn btn-ghost">Read the docs</a>
+          </div>
+          <div class="hero-meta">
+            <span>Apple Silicon</span>
+            <span>Local-first</span>
+            <span>MIT licensed</span>
+          </div>
+        </div>
+
+        <!-- App preview -->
+        <div class="app-preview reveal" aria-hidden="true">
+          <div class="app-preview-bar">
+            <span class="pip r"></span>
+            <span class="pip y"></span>
+            <span class="pip g"></span>
+            <span class="title">MINT — Strategy Sync</span>
+          </div>
+          <div class="app-body">
+            <aside class="app-sidebar">
+              <div class="nav-item active">Meetings</div>
+              <div class="nav-item">Recording</div>
+              <div class="nav-item">Settings</div>
+            </aside>
+            <div class="app-main">
+              <div class="app-main-header">
+                <span class="rec-dot"></span>
+                <span class="meeting-title">Strategy Sync</span>
+                <span class="timer">00:14:32</span>
+              </div>
+              <div class="preview-line">
+                <span class="speaker">You</span>
+                <span class="text">Let me share my screen — the Q3 numbers are looking strong.</span>
+              </div>
+              <div class="preview-line">
+                <span class="speaker">Meeting Users</span>
+                <span class="text">Agreed. We can probably ship by the second week of June.</span>
+              </div>
+              <div class="preview-line">
+                <span class="speaker">You</span>
+                <span class="text">Action item: Priya to finalise QA scope by Friday.</span>
+              </div>
+              <div class="preview-line interim">
+                <span class="speaker">Meeting Users</span>
+                <span class="text">I'll send the brief over right after the call…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section section-divider" id="features">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Features</span>
+          <h2 class="display">Built for the way meetings actually sound.</h2>
+          <p class="lede">
+            Two audio streams, separately labelled. Live captions while you talk.
+            Structured notes when you stop.
+          </p>
+        </div>
+
+        <div class="features">
+          <div class="feature reveal">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="9" y="3" width="6" height="12" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
+              </svg>
+            </div>
+            <h3>Dual audio capture</h3>
+            <p>
+              Microphone via Web Audio API, system audio via AudioTee. Both
+              streams are downsampled to 16&nbsp;kHz PCM and transcribed in
+              parallel — your voice and theirs never blend.
+            </p>
+          </div>
+
+          <div class="feature reveal">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
+              </svg>
+            </div>
+            <h3>Real-time transcription</h3>
+            <p>
+              Words land on screen as they're spoken, via Deepgram's nova-2
+              streaming WebSocket — or run local Whisper for fully offline.
+            </p>
+          </div>
+
+          <div class="feature reveal">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M3 9h18M8 14h6" />
+              </svg>
+            </div>
+            <h3>Markdown on disk</h3>
+            <p>
+              Each meeting is a folder containing <code>transcript.md</code>,
+              <code>notes.md</code>, and <code>metadata.json</code>. Open them
+              in any editor.
+            </p>
+          </div>
+
+          <div class="feature reveal">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 6h16M4 12h10M4 18h16" />
+                <circle cx="18" cy="12" r="2" />
+              </svg>
+            </div>
+            <h3>AI-powered notes</h3>
+            <p>
+              On-demand summaries, decisions, and action items via any OpenAI
+              chat model — pick from a dropdown — or a local Ollama model.
+              Generation is always opt-in.
+            </p>
+          </div>
+
+          <div class="feature reveal">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+            </div>
+            <h3>Smart organization</h3>
+            <p>
+              Auto-sorted by recency. Drag-and-drop sections, color tags, and
+              full-text search across every transcript you've ever recorded.
+            </p>
+          </div>
+
+          <div class="feature reveal">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6l-8-4Z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </div>
+            <h3>Cloud or fully offline</h3>
+            <p>
+              Pair Deepgram + OpenAI for the lowest latency, or use Whisper +
+              Ollama and never make a single network request.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section section-divider" id="how">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">How it works</span>
+          <h2 class="display">From sound to structured notes.</h2>
+          <p class="lede">The full lifecycle of one meeting, from the moment you hit record.</p>
+        </div>
+
+        <div class="steps">
+          <div class="step reveal">
+            <span class="step-num">Step 01</span>
+            <h3>Capture</h3>
+            <p>Mic via Web Audio API, system audio via AudioTee. Streams are downsampled to 16&nbsp;kHz PCM.</p>
+          </div>
+          <div class="step reveal">
+            <span class="step-num">Step 02</span>
+            <h3>Transcribe</h3>
+            <p>Two parallel Deepgram WebSockets — or a local Whisper model running entirely on your machine.</p>
+          </div>
+          <div class="step reveal">
+            <span class="step-num">Step 03</span>
+            <h3>Display &amp; save</h3>
+            <p>Live captions render with speaker labels. On stop, Markdown is written to your storage folder.</p>
+          </div>
+          <div class="step reveal">
+            <span class="step-num">Step 04</span>
+            <h3>Generate</h3>
+            <p>Hit the notes button. Your chosen OpenAI or Ollama model returns a summary, decisions, and action items.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Privacy -->
+    <section class="section section-divider" id="privacy">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Privacy</span>
+          <h2 class="display">Your meetings, <em>your</em> machine.</h2>
+          <p class="lede">No backend. No telemetry. No subscription. Plain Markdown files in a folder you choose.</p>
+        </div>
+
+        <div class="privacy-grid">
+          <div class="privacy-card reveal">
+            <div class="label">No backend</div>
+            <h3>No accounts, no servers</h3>
+            <p>
+              MINT has no servers. Network calls are made only to the providers
+              you configure — and only while you're recording or generating notes.
+            </p>
+          </div>
+          <div class="privacy-card reveal">
+            <div class="label">No telemetry</div>
+            <h3>The app doesn't phone home</h3>
+            <p>
+              No analytics, no event tracking, no transcripts uploaded anywhere
+              you didn't explicitly point the app at.
+            </p>
+          </div>
+          <div class="privacy-card reveal">
+            <div class="label">Plain text</div>
+            <h3>Yours forever</h3>
+            <p>
+              Meetings are stored as Markdown. If you stop using MINT tomorrow,
+              every transcript still opens in any text editor on earth.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section class="section section-divider" id="install">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Install</span>
+          <h2 class="display">Four commands. <em>No app store.</em></h2>
+          <p class="lede">
+            MINT is distributed as source. You build it locally — which keeps
+            macOS Gatekeeper out of the way.
+          </p>
+        </div>
+
+        <div class="install-grid">
+          <div class="install-steps reveal">
+            <div class="install-step">
+              <span class="num">1</span>
+              <div>
+                <h4>Prerequisites</h4>
+                <p>macOS on Apple Silicon, <code>Node 20+</code>, <code>Git</code>, and a free Deepgram API key.</p>
+              </div>
+            </div>
+            <div class="install-step">
+              <span class="num">2</span>
+              <div>
+                <h4>Clone the repo</h4>
+                <p>Pull the source from GitHub.</p>
+              </div>
+            </div>
+            <div class="install-step">
+              <span class="num">3</span>
+              <div>
+                <h4>Install &amp; build</h4>
+                <p>Run <code>npm install</code> then <code>npm run build:mac</code>. Drag the resulting <code>.dmg</code> into Applications.</p>
+              </div>
+            </div>
+            <div class="install-step">
+              <span class="num">4</span>
+              <div>
+                <h4>Add your keys</h4>
+                <p>Open Settings inside the app and paste your Deepgram (and optionally OpenAI) keys. No <code>.env</code>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="reveal">
+            <div class="code-block">
+              <div class="code-head">
+                <span class="label">Terminal</span>
+                <button class="copy" data-copy="git clone https://github.com/ChrisWoo0443/MINT.git
+cd MINT
+npm install
+npm run build:mac">Copy</button>
+              </div>
+              <pre><span class="comment"># Clone, install, build a local DMG.</span>
+<span class="prompt">$</span>git clone <span class="arg">https://github.com/ChrisWoo0443/MINT.git</span>
+<span class="prompt">$</span>cd <span class="arg">MINT</span>
+<span class="prompt">$</span>npm install
+<span class="prompt">$</span>npm run <span class="arg">build:mac</span>
+
+<span class="comment"># Drag dist/MINT-*.dmg into Applications.</span>
+<span class="comment"># To update later:</span>
+<span class="prompt">$</span>git pull &amp;&amp; npm run <span class="arg">build:mac</span></pre>
+            </div>
+
+            <div class="install-actions">
+              <a href="https://github.com/ChrisWoo0443/MINT" class="btn btn-primary">
+                Open the repo
+                <svg class="arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </a>
+              <a href="docs.html#install" class="btn btn-ghost">Full install guide</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div class="footer-brand"><span>MINT</span></div>
+            <p>Meeting Intelligence Notes &amp; Transcription. Local-first, macOS-only, built in the open.</p>
+          </div>
+          <div>
+            <h5>Product</h5>
+            <ul>
+              <li><a href="#features">Features</a></li>
+              <li><a href="#how">How it works</a></li>
+              <li><a href="#install">Install</a></li>
+            </ul>
+          </div>
+          <div>
+            <h5>Resources</h5>
+            <ul>
+              <li><a href="docs.html">Documentation</a></li>
+              <li><a href="https://github.com/ChrisWoo0443/MINT">GitHub</a></li>
+              <li><a href="https://github.com/ChrisWoo0443/MINT/blob/main/CONTRIBUTING.md">Contributing</a></li>
+            </ul>
+          </div>
+          <div>
+            <h5>Tech</h5>
+            <ul>
+              <li><a href="https://deepgram.com">Deepgram</a></li>
+              <li><a href="https://openai.com">OpenAI</a></li>
+              <li><a href="https://ollama.com">Ollama</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>© 2026 MINT — MIT licensed</span>
+          <span>Built for macOS · Apple Silicon</span>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/script.js" defer></script>
+  </body>
+</html>

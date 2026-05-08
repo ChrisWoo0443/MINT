@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MINT — Documentation</title>
+    <meta
+      name="description"
+      content="Documentation for MINT, the local-first macOS meeting intelligence app. Install, configure, record, and contribute."
+    />
+    <link rel="icon" type="image/png" href="assets/icon.png" />
+    <link rel="apple-touch-icon" href="assets/icon.png" />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="index.html" class="brand">
+          <span class="brand-mark"></span>MINT <span class="brand-suffix">/ docs</span>
+        </a>
+        <nav class="nav">
+          <a href="index.html#features">Features</a>
+          <a href="index.html#install">Install</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/ChrisWoo0443/MINT" class="cta always-show">GitHub →</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="docs-hero">
+        <span class="eyebrow">Documentation</span>
+        <h1 class="display"><em>Docs</em> &amp; guides</h1>
+        <p class="lede">
+          Everything you need to install MINT, point it at your audio and API
+          providers, record a meeting, and ship a fix back upstream. Local-first,
+          macOS-only, opinionated about privacy.
+        </p>
+      </div>
+
+      <div class="docs-layout">
+        <aside class="docs-sidebar" aria-label="Documentation table of contents">
+          <h5>Getting Started</h5>
+          <ul>
+            <li><a href="#introduction" class="active">Introduction</a></li>
+            <li><a href="#requirements">Requirements</a></li>
+            <li><a href="#install">Install</a></li>
+            <li><a href="#first-launch">First launch</a></li>
+          </ul>
+
+          <h5>Configuration</h5>
+          <ul>
+            <li><a href="#api-keys">API keys</a></li>
+            <li><a href="#providers">Providers</a></li>
+            <li><a href="#storage">Storage</a></li>
+          </ul>
+
+          <h5>Using MINT</h5>
+          <ul>
+            <li><a href="#recording">Recording</a></li>
+            <li><a href="#live-transcript">Live transcript</a></li>
+            <li><a href="#notes-generation">Notes generation</a></li>
+            <li><a href="#organization">Organization</a></li>
+          </ul>
+
+          <h5>Development</h5>
+          <ul>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#dev-commands">Dev commands</a></li>
+            <li><a href="#contributing">Contributing</a></li>
+          </ul>
+
+          <h5>Reference</h5>
+          <ul>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+            <li><a href="#privacy">Privacy</a></li>
+            <li><a href="#license">License</a></li>
+          </ul>
+        </aside>
+
+        <article class="docs-content">
+          <section id="introduction">
+            <h2>Introduction</h2>
+            <p>
+              <strong>MINT</strong> — Meeting Intelligence Notes &amp; Transcription —
+              is a macOS desktop app that captures your microphone and your
+              system audio simultaneously, transcribes both streams in real time,
+              and turns the result into structured Markdown notes.
+            </p>
+            <p>
+              The app is local-first. Meetings are written directly to a folder
+              on your machine — there is no MINT cloud, no account, no sync
+              service. You choose which transcription and note providers to
+              use, including fully offline options.
+            </p>
+            <ul>
+              <li><strong>Dual audio capture</strong> — mic and system audio as separate, labeled streams.</li>
+              <li><strong>Real-time transcription</strong> — Deepgram nova-2 over WebSocket, or local Whisper.</li>
+              <li><strong>Local Markdown</strong> — every meeting is a folder of plain files you own.</li>
+              <li><strong>Optional offline mode</strong> — Whisper plus Ollama for a fully local pipeline.</li>
+            </ul>
+          </section>
+
+          <section id="requirements">
+            <h2>Requirements</h2>
+            <ul>
+              <li>macOS on Apple Silicon (M1 or newer).</li>
+              <li>Node.js 20 or newer.</li>
+              <li>Git.</li>
+              <li>A Deepgram API key — the free tier is enough to start.</li>
+              <li>Optional: an OpenAI API key (any chat model — defaults to GPT-4o), or a local Ollama install.</li>
+            </ul>
+
+            <div class="docs-callout">
+              <strong>macOS only</strong>
+              MINT is intentionally macOS-only. System audio capture relies on
+              <code>AudioTee</code>, which is macOS-specific. Windows and Linux
+              are not supported and are not on the roadmap.
+            </div>
+          </section>
+
+          <section id="install">
+            <h2>Install</h2>
+            <p>
+              MINT ships as source. Clone the repo, install dependencies, and
+              build the DMG locally.
+            </p>
+            <pre><code>git clone https://github.com/ChrisWoo0443/MINT.git
+cd MINT
+npm install
+npm run build:mac</code></pre>
+            <p>
+              When the build completes, open <code>dist/</code> and drag the
+              <code>MINT.dmg</code> into your <code>Applications</code> folder.
+              Eject, launch from Spotlight, and you’re done.
+            </p>
+            <h3>Updating</h3>
+            <p>
+              To pick up a new release, pull and rebuild:
+            </p>
+            <pre><code>git pull
+npm run build:mac</code></pre>
+            <p>
+              The in-app update checker will also notify you when a new GitHub
+              release is published.
+            </p>
+          </section>
+
+          <section id="first-launch">
+            <h2>First launch</h2>
+            <p>
+              On first launch, macOS will ask for two permissions. Both are
+              required for the app to function:
+            </p>
+            <ul>
+              <li><strong>Microphone</strong> — captures your voice.</li>
+              <li><strong>Screen Recording</strong> — required by AudioTee to capture system audio (the other side of the call).</li>
+            </ul>
+            <p>
+              After granting permissions, the onboarding flow asks you to pick
+              an input device and a storage folder. The default storage folder
+              is <code>~/Documents/MINT</code>.
+            </p>
+            <div class="docs-callout">
+              <strong>Tip</strong>
+              If you deny Screen Recording by accident, re-enable it under
+              <em>System Settings → Privacy &amp; Security → Screen Recording</em>
+              and restart the app.
+            </div>
+          </section>
+
+          <section id="api-keys">
+            <h2>API keys</h2>
+            <p>
+              API keys are entered in the app’s <strong>Settings</strong> panel,
+              not via a <code>.env</code> file. They’re persisted in Electron’s
+              <code>userData</code> directory and never leave your machine
+              except as outbound calls to the provider you chose.
+            </p>
+            <ul>
+              <li><strong>Deepgram API key</strong> — for streaming cloud transcription.</li>
+              <li><strong>OpenAI API key</strong> — for note generation. Once entered, MINT lists every chat model your key can access in a dropdown (defaults to <code>gpt-4o</code>).</li>
+              <li><strong>Ollama URL</strong> — typically <code>http://localhost:11434</code> if you run it on the same machine.</li>
+            </ul>
+            <p>
+              You only need to configure the providers you actually use. If you
+              pick Whisper plus Ollama, no cloud key is required.
+            </p>
+          </section>
+
+          <section id="providers">
+            <h2>Providers</h2>
+            <p>
+              MINT separates the two AI tasks — transcription and note
+              generation — so you can mix and match. Pick whichever combination
+              fits the meeting.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>Role</th>
+                  <th>Latency</th>
+                  <th>Cost</th>
+                  <th>Privacy</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Deepgram</td>
+                  <td>Transcription</td>
+                  <td>Real-time</td>
+                  <td>Pay-as-you-go</td>
+                  <td>Audio leaves device</td>
+                </tr>
+                <tr>
+                  <td>Whisper (local)</td>
+                  <td>Transcription</td>
+                  <td>Near real-time on Apple Silicon</td>
+                  <td>Free</td>
+                  <td>Fully local</td>
+                </tr>
+                <tr>
+                  <td>OpenAI</td>
+                  <td>Notes (any chat model)</td>
+                  <td>Seconds</td>
+                  <td>Pay-as-you-go</td>
+                  <td>Transcript leaves device</td>
+                </tr>
+                <tr>
+                  <td>Ollama</td>
+                  <td>Notes</td>
+                  <td>Depends on model</td>
+                  <td>Free</td>
+                  <td>Fully local</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              Switch providers any time from <strong>Settings</strong>. The
+              choice is per-app, not per-meeting.
+            </p>
+          </section>
+
+          <section id="storage">
+            <h2>Storage</h2>
+            <p>
+              By default, MINT writes meetings to <code>~/Documents/MINT</code>.
+              You can change this from Settings — point it at iCloud Drive,
+              Dropbox, an external SSD, or any folder you control.
+            </p>
+            <p>Each meeting is a directory:</p>
+            <pre><code>~/Documents/MINT/
+├── tags.json
+└── 2026-05-08-team-sync/
+    ├── metadata.json
+    ├── transcript.md
+    └── notes.md           # written when you generate notes</code></pre>
+            <p>
+              The format is intentionally portable. Open a meeting in Obsidian,
+              Bear, VS Code, or just <code>cat</code> it. Tag definitions live
+              in a single <code>tags.json</code> at the storage root.
+            </p>
+          </section>
+
+          <section id="recording">
+            <h2>Recording</h2>
+            <p>
+              Hit the record button in the top bar. MINT opens two audio
+              streams simultaneously:
+            </p>
+            <ul>
+              <li><strong>Microphone</strong> via the Web Audio API, labeled with your display name.</li>
+              <li><strong>System audio</strong> via AudioTee, labeled <code>Meeting Users</code>.</li>
+            </ul>
+            <p>
+              Both are downsampled to <strong>16 kHz linear16 PCM</strong> in the
+              renderer, then forwarded to the main process over IPC. From there
+              they fan out to whichever transcription provider you configured.
+            </p>
+            <p>
+              Stop the recording with the same button or <kbd>⌘</kbd> +
+              <kbd>.</kbd>. MINT finalizes <code>transcript.md</code> and
+              updates <code>metadata.json</code> on stop.
+            </p>
+          </section>
+
+          <section id="live-transcript">
+            <h2>Live transcript</h2>
+            <p>
+              The recording view streams partial and finalized lines as they
+              arrive, with speaker labels. You can pop out a compact
+              <strong>floating overlay</strong> window — useful if you’re
+              screen-sharing and want the transcript visible without taking
+              focus from the meeting.
+            </p>
+            <p>
+              Past meetings are searchable from the dashboard. Search runs
+              across transcripts, not just titles.
+            </p>
+          </section>
+
+          <section id="notes-generation">
+            <h2>Notes generation</h2>
+            <p>
+              Notes are generated <em>on demand</em>, not automatically — MINT
+              never sends your transcript anywhere until you click the
+              <strong>Generate notes</strong> button.
+            </p>
+            <p>The output is a structured Markdown file with three sections:</p>
+            <ul>
+              <li><strong>Summary</strong> — what the meeting was about.</li>
+              <li><strong>Decisions</strong> — concrete things that were agreed.</li>
+              <li><strong>Action items</strong> — owner and task, when extractable.</li>
+            </ul>
+            <p>
+              Regenerate as often as you want. Notes are saved as
+              <code>notes.md</code> alongside the transcript.
+            </p>
+            <h3>Choosing a model</h3>
+            <p>
+              In <strong>Settings → Notes Generation</strong>, after entering
+              your OpenAI API key MINT calls <code>/v1/models</code> and
+              populates a dropdown of every chat model your key can access.
+              Pick whichever you prefer — the default is <code>gpt-4o</code>.
+            </p>
+            <p>
+              Models in the <code>gpt-4o</code>, <code>gpt-4.1</code>,
+              <code>gpt-5</code>, and <code>o1</code>/<code>o3</code> families
+              support OpenAI's strict structured-output mode and produce the
+              most reliable JSON. Older models fall back to plain JSON mode
+              automatically. Ollama users still pick from their locally
+              installed models the same way.
+            </p>
+          </section>
+
+          <section id="organization">
+            <h2>Organization</h2>
+            <p>
+              The dashboard auto-sorts meetings into time-based sections —
+              <em>Today</em>, <em>Yesterday</em>, <em>This Week</em>,
+              <em>Earlier</em>. Drag a card between sections to override the
+              automatic placement.
+            </p>
+            <p>
+              Color tags are defined once in <code>tags.json</code> and applied
+              per meeting from the card. Tags persist as plain JSON, so they
+              survive backups, syncs, and editor switches.
+            </p>
+          </section>
+
+          <section id="architecture">
+            <h2>Architecture</h2>
+            <p>
+              MINT is a standard Electron app split across three processes —
+              <strong>main</strong>, <strong>preload</strong>, and
+              <strong>renderer</strong>. The renderer is treated as untrusted:
+              every IPC payload is validated by a Zod schema in
+              <code>src/main/ipc-schemas.ts</code> before reaching service
+              code.
+            </p>
+            <pre><code>src/
+├── main/                       # Node.js — orchestration
+│   ├── index.ts                # App entry, window + tray
+│   ├── ipc-handlers.ts         # Recording lifecycle
+│   ├── ipc-schemas.ts          # Zod validation
+│   └── services/
+│       ├── audiotee.ts         # System audio (macOS)
+│       ├── deepgram.ts         # Streaming WebSocket
+│       ├── transcription.ts    # Provider abstraction
+│       ├── local-whisper.ts    # Offline transcription
+│       ├── openai.ts           # OpenAI / Ollama notes
+│       └── local-storage.ts    # Markdown + JSON
+├── preload/                    # contextBridge — typed API
+└── renderer/                   # React 19 + TypeScript</code></pre>
+            <p>
+              The audio pipeline: renderer captures both streams → downsamples
+              to 16 kHz linear16 PCM → forwards over IPC
+              (<code>audio:chunk:mic</code>, <code>audio:chunk:system</code>) →
+              main fans out to one transcription stream per channel → results
+              flow back to the renderer for display and persistence.
+            </p>
+          </section>
+
+          <section id="dev-commands">
+            <h2>Dev commands</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Command</th>
+                  <th>What it does</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>npm run dev</code></td>
+                  <td>Start the app with HMR.</td>
+                </tr>
+                <tr>
+                  <td><code>npm run typecheck</code></td>
+                  <td>Run TypeScript checks (node + web).</td>
+                </tr>
+                <tr>
+                  <td><code>npm test</code></td>
+                  <td>Run the Vitest suite.</td>
+                </tr>
+                <tr>
+                  <td><code>npm run lint</code></td>
+                  <td>Run ESLint.</td>
+                </tr>
+                <tr>
+                  <td><code>npx electron-vite build</code></td>
+                  <td>Production build to <code>out/</code>.</td>
+                </tr>
+                <tr>
+                  <td><code>npm run build</code></td>
+                  <td>Build and package with electron-builder.</td>
+                </tr>
+                <tr>
+                  <td><code>npm run build:mac</code></td>
+                  <td>Build the macOS DMG.</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="docs-callout">
+              <strong>Note</strong>
+              Run <code>npm run typecheck</code> and <code>npm test</code>
+              before opening a PR — both are required to pass in CI.
+            </div>
+          </section>
+
+          <section id="contributing">
+            <h2>Contributing</h2>
+            <p>
+              Contributions are welcome. The full guide lives at
+              <a href="https://github.com/ChrisWoo0443/MINT/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>
+              on GitHub. The short version:
+            </p>
+            <ul>
+              <li>Follow TDD — write the failing test first, then the implementation.</li>
+              <li>Keep commits atomic and descriptive.</li>
+              <li>Run <code>npm run typecheck</code>, <code>npm test</code>, and <code>npm run lint</code> before pushing.</li>
+              <li>macOS Apple Silicon is the only supported target. Don’t add platform shims for Windows or Linux.</li>
+            </ul>
+            <p>
+              The project is MIT-licensed. By contributing you agree your
+              changes ship under the same license.
+            </p>
+          </section>
+
+          <section id="troubleshooting">
+            <h2>Troubleshooting</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Symptom</th>
+                  <th>Fix</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>System audio is silent in transcripts</td>
+                  <td>Grant <strong>Screen Recording</strong> permission in System Settings, then restart MINT.</td>
+                </tr>
+                <tr>
+                  <td>Mic transcript is silent</td>
+                  <td>Check the input device in Settings and confirm macOS hasn’t muted MINT under Privacy &amp; Security → Microphone.</td>
+                </tr>
+                <tr>
+                  <td>Gatekeeper warns about an unidentified developer</td>
+                  <td>You build MINT yourself, so this should be rare. If it appears, see Apple’s docs on opening apps from unidentified developers.</td>
+                </tr>
+                <tr>
+                  <td>Whisper model download is slow</td>
+                  <td>First run only. Models are cached locally after the initial download.</td>
+                </tr>
+                <tr>
+                  <td>Transcription drops out mid-meeting</td>
+                  <td>The app auto-reconnects and surfaces a degraded-mode banner. If it persists, verify your Deepgram key and network.</td>
+                </tr>
+                <tr>
+                  <td>Notes generation fails</td>
+                  <td>Confirm your OpenAI key has credit, or that Ollama is running and reachable at the configured URL.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="privacy">
+            <h2>Privacy</h2>
+            <p>
+              Audio and transcripts never leave your machine unless you have
+              explicitly chosen a cloud provider. With <strong>Deepgram</strong>
+              selected, audio is streamed to Deepgram for transcription. With
+              <strong>OpenAI</strong> selected, the transcript is sent to OpenAI
+              when you press <em>Generate notes</em>. Nothing else is uploaded.
+            </p>
+            <p>
+              For a fully offline pipeline, choose <strong>Whisper</strong> for
+              transcription and <strong>Ollama</strong> for notes. In that
+              configuration MINT makes no network calls related to your
+              meetings.
+            </p>
+            <blockquote>
+              Your meetings are files in a folder you own. That’s the whole point.
+            </blockquote>
+          </section>
+
+          <section id="license">
+            <h2>License</h2>
+            <p>
+              MINT is released under the MIT License. See
+              <a href="https://github.com/ChrisWoo0443/MINT/blob/main/LICENSE">LICENSE</a>
+              on GitHub for the full text.
+            </p>
+          </section>
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <div class="footer-brand"><span>MINT</span></div>
+            <p style="color:var(--fg-muted); font-size:.92rem; max-width:34ch;">
+              Meeting Intelligence Notes &amp; Transcription. Local-first, macOS-only,
+              built in the open.
+            </p>
+          </div>
+          <div>
+            <h5>Product</h5>
+            <ul>
+              <li><a href="index.html#features">Features</a></li>
+              <li><a href="index.html#how">How it works</a></li>
+              <li><a href="index.html#install">Install</a></li>
+            </ul>
+          </div>
+          <div>
+            <h5>Resources</h5>
+            <ul>
+              <li><a href="docs.html">Documentation</a></li>
+              <li><a href="https://github.com/ChrisWoo0443/MINT">GitHub</a></li>
+              <li><a href="https://github.com/ChrisWoo0443/MINT/blob/main/CONTRIBUTING.md">Contributing</a></li>
+            </ul>
+          </div>
+          <div>
+            <h5>Tech</h5>
+            <ul>
+              <li><a href="https://deepgram.com">Deepgram</a></li>
+              <li><a href="https://openai.com">OpenAI</a></li>
+              <li><a href="https://ollama.com">Ollama</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>© 2026 MINT — MIT licensed</span>
+          <span>Built for macOS · Apple Silicon</span>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var links = document.querySelectorAll('.docs-sidebar a[href^="#"]');
+        var map = {};
+        links.forEach(function (link) {
+          var id = link.getAttribute('href').slice(1);
+          var section = document.getElementById(id);
+          if (section) map[id] = link;
+        });
+        if (!('IntersectionObserver' in window)) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                links.forEach(function (l) { l.classList.remove('active'); });
+                var active = map[entry.target.id];
+                if (active) active.classList.add('active');
+              }
+            });
+          },
+          { rootMargin: '-30% 0px -60% 0px', threshold: 0 }
+        );
+        Object.keys(map).forEach(function (id) {
+          var section = document.getElementById(id);
+          if (section) observer.observe(section);
+        });
+      })();
+    </script>
+  </body>
+</html>
