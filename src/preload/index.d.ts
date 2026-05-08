@@ -89,6 +89,7 @@ interface MintAPI {
   openApp: (appPath: string) => Promise<string>
   listOllamaModels: (url: string) => Promise<string[] | null>
   listMeetings: () => Promise<MeetingMetadata[]>
+  searchMeetings: (query: string) => Promise<MeetingMetadata[]>
   getMeeting: (meetingId: string) => Promise<MeetingMetadata>
   deleteMeeting: (meetingId: string) => Promise<void>
   renameMeeting: (meetingId: string, newTitle: string) => Promise<void>

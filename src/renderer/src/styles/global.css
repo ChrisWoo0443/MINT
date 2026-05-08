@@ -374,6 +374,10 @@ label {
   padding: 48px 0;
 }
 
+.meeting-search {
+  margin-bottom: 16px;
+}
+
 /* ----- Date Sections ----- */
 .meeting-section {
   margin-bottom: 20px;

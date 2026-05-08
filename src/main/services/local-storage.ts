@@ -121,7 +121,9 @@ export class LocalStorageService {
   async getFullTranscript(meetingId: string): Promise<string> {
     const buffer = this.transcriptBuffers.get(meetingId)
     if (buffer && buffer.length > 0) {
-      return buffer.map((entry) => `${entry.speaker ?? 'Unknown'}: ${entry.content}`).join('\n')
+      return buffer
+        .map((entry) => `[${this.formatTimestamp(entry.timestampStart)}] ${entry.speaker ?? 'Unknown'}: ${entry.content}`)
+        .join('\n')
     }
 
     return this.parseTranscriptFileAsPlainText(meetingId)
@@ -184,6 +186,40 @@ export class LocalStorageService {
     meetings.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
 
     return meetings
+  }
+
+  async searchMeetings(query: string): Promise<MeetingMetadata[]> {
+    if (!query.trim()) return []
+
+    const needle = query.toLowerCase()
+    const meetings = await this.listMeetings()
+    const results: MeetingMetadata[] = []
+
+    for (const meeting of meetings) {
+      if (meeting.title.toLowerCase().includes(needle)) {
+        results.push(meeting)
+        continue
+      }
+
+      const meetingDir = join(this.storagePath, meeting.id)
+      let matched = false
+
+      for (const filename of ['transcript.md', 'notes.md']) {
+        try {
+          const content = await readFile(join(meetingDir, filename), 'utf-8')
+          if (content.toLowerCase().includes(needle)) {
+            matched = true
+            break
+          }
+        } catch {
+          // file may not exist yet
+        }
+      }
+
+      if (matched) results.push(meeting)
+    }
+
+    return results
   }
 
   async getMeeting(meetingId: string): Promise<MeetingMetadata> {
@@ -266,7 +302,11 @@ export class LocalStorageService {
 
   private async readMetadataFile(metadataPath: string): Promise<MeetingMetadata> {
     const rawContent = await readFile(metadataPath, 'utf-8')
-    return JSON.parse(rawContent) as MeetingMetadata
+    try {
+      return JSON.parse(rawContent) as MeetingMetadata
+    } catch {
+      throw new Error(`Corrupted metadata file: ${metadataPath}`)
+    }
   }
 
   private formatTimestamp(seconds: number): string {

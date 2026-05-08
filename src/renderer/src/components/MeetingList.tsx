@@ -79,6 +79,9 @@ export function MeetingList({
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [dragOverSection, setDragOverSection] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Meeting[] | null>(null)
+  const [searching, setSearching] = useState(false)
   const dragCounters = useRef(new Map<string, number>())
   const transcriptionProvider = localStorage.getItem('transcriptionProvider') || 'local'
   const canRecord =
@@ -97,6 +100,39 @@ export function MeetingList({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim()
+    if (!trimmed) {
+      setSearchResults(null)
+      setSearching(false)
+      return
+    }
+
+    setSearching(true)
+    let cancelled = false
+    const handle = setTimeout(async () => {
+      const results = await window.mintAPI.searchMeetings(trimmed)
+      if (cancelled) return
+      const tagsById = new Map(meetings.map((m) => [m.id, m.tags]))
+      setSearchResults(
+        results.map((m) => ({
+          id: m.id,
+          title: m.title,
+          startedAt: m.startedAt,
+          endedAt: m.endedAt,
+          status: m.status,
+          tags: tagsById.get(m.id) ?? m.tags
+        }))
+      )
+      setSearching(false)
+    }, 200)
+
+    return (): void => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [searchQuery, meetings])
 
   const dateSectionSet = useMemo(() => new Set(DATE_SECTION_ORDER), [])
 
@@ -303,8 +339,39 @@ export function MeetingList({
           </button>
         </div>
       </div>
+      <div className="meeting-search">
+        <input
+          type="search"
+          placeholder="Search meetings, transcripts, and notes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
       {meetings.length === 0 ? (
         <p>No meetings yet. Start your first recording.</p>
+      ) : searchResults !== null ? (
+        searching && searchResults.length === 0 ? (
+          <p>Searching...</p>
+        ) : searchResults.length === 0 ? (
+          <p>No meetings match "{searchQuery.trim()}".</p>
+        ) : (
+          <div className="meeting-section">
+            <div className="meeting-section-header">
+              <span className="meeting-section-label">Search results</span>
+              <span className="meeting-section-count">{searchResults.length}</span>
+            </div>
+            {searchResults.map((meeting) => (
+              <MeetingCard
+                key={meeting.id}
+                meeting={meeting}
+                availableTags={availableTags}
+                onClick={() => onSelectMeeting(meeting.id)}
+                onDelete={handleDeleteMeeting}
+                onToggleTag={handleToggleTag}
+              />
+            ))}
+          </div>
+        )
       ) : (
         allGroups.map(({ section, name, isCustom, meetings: sectionMeetings }) => {
           const isCollapsed = collapsed[section] ?? false
