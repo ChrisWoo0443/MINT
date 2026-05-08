@@ -83,11 +83,30 @@ export type UpdateStatusPayload =
   | { kind: 'error'; message: string; checkedAt: number }
   | { kind: 'disabled' }
 
+export type TranscriptionDegradedSource = 'mic' | 'system'
+
+export type TranscriptionDegradedEvent =
+  | {
+      kind: 'reconnecting'
+      source: TranscriptionDegradedSource
+      attempt: number
+      nextDelayMs: number
+    }
+  | { kind: 'recovered'; source: TranscriptionDegradedSource }
+  | {
+      kind: 'dropped'
+      source: TranscriptionDegradedSource
+      droppedBytes: number
+      reason: string
+    }
+  | { kind: 'terminal'; source: TranscriptionDegradedSource; reason: string }
+
 export interface MintAPI {
   startRecording: (args: StartRecordingArgs) => Promise<void>
   stopRecording: () => Promise<void>
   onTranscriptChunk: (callback: (chunk: TranscriptChunk) => void) => () => void
   onRecordingStatus: (callback: (status: string) => void) => () => void
+  onTranscriptionDegraded: (callback: (event: TranscriptionDegradedEvent) => void) => () => void
   getAudioDevices: () => Promise<MediaDeviceInfo[]>
   setAudioDevice: (deviceId: string) => Promise<void>
   openExternal: (url: string) => Promise<void>

@@ -748,6 +748,33 @@ label {
   background: var(--color-danger-hover);
 }
 
+/* ----- Degraded transcription banner ----- */
+.transcription-degraded-banners {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.transcription-degraded-banner {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+
+.transcription-degraded-warn {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.4);
+  color: #facc15;
+}
+
+.transcription-degraded-error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
 /* ----- Transcript Feed ----- */
 .transcript-feed {
   flex: 1;

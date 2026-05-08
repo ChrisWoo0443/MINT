@@ -7,7 +7,8 @@ import type {
   TagDefinition,
   WhisperModelName,
   WhisperDownloadProgress,
-  UpdateStatusPayload
+  UpdateStatusPayload,
+  TranscriptionDegradedEvent
 } from '../shared/api-types'
 
 const mintAPI: MintAPI = {
@@ -31,6 +32,19 @@ const mintAPI: MintAPI = {
     ipcRenderer.on('recording:status', listener)
     return () => {
       ipcRenderer.removeListener('recording:status', listener)
+    }
+  },
+
+  onTranscriptionDegraded: (callback: (event: TranscriptionDegradedEvent) => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      degraded: TranscriptionDegradedEvent
+    ): void => {
+      callback(degraded)
+    }
+    ipcRenderer.on('transcription:degraded', listener)
+    return () => {
+      ipcRenderer.removeListener('transcription:degraded', listener)
     }
   },
 

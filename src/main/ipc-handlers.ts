@@ -10,6 +10,7 @@ import { LocalWhisperService } from './services/local-whisper'
 import { WhisperEngine } from './services/whisper-engine'
 import type { TranscriptionService } from './services/transcription'
 import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
+import type { TranscriptionDegradedEvent } from '../shared/api-types'
 import { z } from 'zod'
 import {
   MeetingIdSchema,
@@ -29,6 +30,12 @@ import {
 export function registerIpcHandlers(mainWindow: BrowserWindow): {
   updateCheckerService: UpdateCheckerService
 } {
+  function broadcast(channel: string, payload: unknown): void {
+    for (const wc of webContents.getAllWebContents()) {
+      wc.send(channel, payload)
+    }
+  }
+
   const audioCaptureService = new AudioCaptureService()
   const audioTeeService = new AudioTeeService()
   let micTranscriptionService: TranscriptionService | null = null
@@ -44,9 +51,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   })
 
   updateCheckerService.onStatusChange((status) => {
-    for (const wc of webContents.getAllWebContents()) {
-      wc.send('updates:status', status)
-    }
+    broadcast('updates:status', status)
   })
 
   async function ensureWhisperEngine(modelName: ModelName): Promise<WhisperEngine> {
@@ -138,9 +143,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         timestampEnd: number
         isFinal: boolean
       }): Promise<void> => {
-        for (const wc of webContents.getAllWebContents()) {
-          wc.send('transcript:chunk', result)
-        }
+        broadcast('transcript:chunk', result)
         if (result.isFinal && currentMeetingId) {
           try {
             await localStorageService.insertTranscriptChunk(
@@ -176,12 +179,26 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
       const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
 
+      micTranscriptionService.onDegraded?.((event) => {
+        broadcast('transcription:degraded', {
+          ...event,
+          source: 'mic'
+        } satisfies TranscriptionDegradedEvent)
+      })
+
       await micTranscriptionService.startStreaming({ deepgramApiKey }, userName, handleTranscript)
       console.log(
         `[MINT] Mic transcription started (provider: ${provider}, speaker: "${userName}")`
       )
 
       try {
+        systemTranscriptionService.onDegraded?.((event) => {
+          broadcast('transcription:degraded', {
+            ...event,
+            source: 'system'
+          } satisfies TranscriptionDegradedEvent)
+        })
+
         await systemTranscriptionService.startStreaming(
           { deepgramApiKey },
           'Meeting Users',
@@ -190,6 +207,33 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         console.log(
           `[MINT] System audio transcription started (provider: ${provider}, speaker: "Meeting Users")`
         )
+
+        audioTeeService.onDegraded((event) => {
+          // Project audiotee process events onto the renderer's degraded
+          // surface using the 'system' source. The audiotee terminal here
+          // is distinct from the deepgram terminal — both stop system
+          // audio, neither stops the meeting.
+          if (event.kind === 'reconnecting') {
+            broadcast('transcription:degraded', {
+              kind: 'reconnecting',
+              source: 'system',
+              attempt: 1,
+              nextDelayMs: 0
+            } satisfies TranscriptionDegradedEvent)
+          } else if (event.kind === 'recovered') {
+            broadcast('transcription:degraded', {
+              kind: 'recovered',
+              source: 'system'
+            } satisfies TranscriptionDegradedEvent)
+          } else {
+            broadcast('transcription:degraded', {
+              kind: 'terminal',
+              source: 'system',
+              reason: event.reason
+            } satisfies TranscriptionDegradedEvent)
+          }
+        })
+
         await audioTeeService.start((chunk) => {
           systemTranscriptionService?.sendAudio(chunk)
         })
@@ -197,13 +241,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         console.warn('[MINT] System audio transcription unavailable:', systemError)
       }
 
-      for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'recording')
+      broadcast('recording:status', 'recording')
       const micDeviceId = args.micDeviceId || 'default'
       audioCaptureService.startCapture(mainWindow, { micDeviceId })
     } catch (startError) {
       console.error('Failed to start recording:', startError)
       currentMeetingId = null
-      for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'error')
+      broadcast('recording:status', 'error')
       throw startError
     }
   })
@@ -217,7 +261,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     systemTranscriptionService = null
 
     if (!currentMeetingId) {
-      for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'stopped')
+      broadcast('recording:status', 'stopped')
       return
     }
 
@@ -227,7 +271,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     localStorageService.clearTranscriptBuffer(meetingId)
     await localStorageService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
 
-    for (const wc of webContents.getAllWebContents()) wc.send('recording:status', 'stopped')
+    broadcast('recording:status', 'stopped')
   })
 
   ipcMain.handle('meetings:generateNotes', async (_event, rawArgs: unknown) => {
@@ -330,9 +374,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   ipcMain.handle('whisper:downloadModel', async (_event, name: unknown) => {
     const modelName = WhisperModelSchema.parse(name)
     await whisperModelManager.downloadModel(modelName, (progress) => {
-      for (const wc of webContents.getAllWebContents()) {
-        wc.send('whisper:download:progress', progress)
-      }
+      broadcast('whisper:download:progress', progress)
     })
   })
 

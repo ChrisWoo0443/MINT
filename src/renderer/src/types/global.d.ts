@@ -13,6 +13,8 @@ export type {
   WhisperDownloadProgress,
   UpdateInfoPayload,
   UpdateStatusPayload,
+  TranscriptionDegradedEvent,
+  TranscriptionDegradedSource,
   MintAPI
 } from '../../../shared/api-types'
 

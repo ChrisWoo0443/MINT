@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { TranscriptionDegradedEvent, TranscriptionDegradedSource } from '../types/global'
 
 interface TranscriptEntry {
   speaker: string | null
@@ -6,6 +7,13 @@ interface TranscriptEntry {
   timestampStart: number
   isFinal: boolean
 }
+
+type DegradationStatus =
+  | { kind: 'reconnecting'; attempt: number }
+  | { kind: 'dropped'; droppedBytes: number }
+  | { kind: 'terminal'; reason: string }
+
+type DegradationBySource = Partial<Record<TranscriptionDegradedSource, DegradationStatus>>
 
 interface LiveRecordingProps {
   onStop: () => void
@@ -15,6 +23,7 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
   const [title, setTitle] = useState(`Meeting — ${new Date().toLocaleString()}`)
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [degradation, setDegradation] = useState<DegradationBySource>({})
   const transcriptEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,6 +47,41 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
+    const cleanupDegraded = window.mintAPI.onTranscriptionDegraded(
+      (event: TranscriptionDegradedEvent) => {
+        setDegradation((prev) => {
+          const next: DegradationBySource = { ...prev }
+          switch (event.kind) {
+            case 'reconnecting':
+              next[event.source] = { kind: 'reconnecting', attempt: event.attempt }
+              break
+            case 'recovered':
+              delete next[event.source]
+              break
+            case 'dropped':
+              next[event.source] = { kind: 'dropped', droppedBytes: event.droppedBytes }
+              break
+            case 'terminal':
+              next[event.source] = { kind: 'terminal', reason: event.reason }
+              break
+          }
+          return next
+        })
+      }
+    )
+    const cleanupStatus = window.mintAPI.onRecordingStatus((status) => {
+      if (status === 'stopped' || status === 'error') {
+        // Clear stale banners so they don't persist into the next meeting view.
+        setDegradation({})
+      }
+    })
+    return () => {
+      cleanupDegraded()
+      cleanupStatus()
+    }
+  }, [])
+
+  useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [transcript])
 
@@ -48,6 +92,42 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
     const remainingSeconds = (seconds % 60).toString().padStart(2, '0')
     return `${minutes}:${remainingSeconds}`
   }
+
+  const degradationBanners = (
+    Object.entries(degradation) as Array<[TranscriptionDegradedSource, DegradationStatus]>
+  ).map(([source, status]) => {
+    const sourceLabel = source === 'mic' ? 'Microphone' : 'System audio'
+    let message: string
+    let severity: 'warn' | 'error'
+    switch (status.kind) {
+      case 'reconnecting':
+        message = `${sourceLabel}: reconnecting${
+          status.attempt > 1 ? ` (attempt ${status.attempt})` : '…'
+        }`
+        severity = 'warn'
+        break
+      case 'dropped':
+        message = `${sourceLabel}: audio dropped during reconnect (${Math.round(
+          status.droppedBytes / 1024
+        )} KB)`
+        severity = 'warn'
+        break
+      case 'terminal':
+        message = `${sourceLabel}: transcription stopped — ${status.reason}`
+        severity = 'error'
+        break
+    }
+    return (
+      <div
+        key={source}
+        className={`transcription-degraded-banner transcription-degraded-${severity}`}
+        role="status"
+        aria-live="polite"
+      >
+        {message}
+      </div>
+    )
+  })
 
   return (
     <div className="live-recording">
@@ -63,6 +143,9 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
           Stop Recording
         </button>
       </div>
+      {degradationBanners.length > 0 && (
+        <div className="transcription-degraded-banners">{degradationBanners}</div>
+      )}
       <div className="transcript-feed">
         {transcript.map((entry, index) => (
           <div key={index} className={`transcript-entry ${entry.isFinal ? '' : 'interim'}`}>
