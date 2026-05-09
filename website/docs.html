@@ -61,6 +61,7 @@
             <li><a href="#live-transcript">Live transcript</a></li>
             <li><a href="#notes-generation">Notes generation</a></li>
             <li><a href="#organization">Organization</a></li>
+            <li><a href="#calendar">Calendar</a></li>
           </ul>
 
           <h5>Development</h5>
@@ -349,6 +350,27 @@ npm run build:mac</code></pre>
             </p>
           </section>
 
+          <section id="calendar">
+            <h2>Calendar</h2>
+            <p>
+              The Calendar tab shows a 7-day grid of upcoming and past meeting
+              events. Click any empty slot to create an event with title,
+              start/end times, optional notes, and a tag. Click an existing
+              event to edit it.
+            </p>
+            <p>
+              From a future event, the modal exposes a <em>Start recording</em>
+              button — clicking it kicks off a recording with the event's
+              title and tag pre-filled. Once recorded, the same event opens
+              the meeting detail view instead.
+            </p>
+            <p>
+              Events are stored as <code>events.json</code> at the storage root
+              alongside <code>tags.json</code>. No Google, Outlook, or iCloud
+              accounts; no network calls.
+            </p>
+          </section>
+
           <section id="architecture">
             <h2>Architecture</h2>
             <p>
@@ -370,6 +392,7 @@ npm run build:mac</code></pre>
 │       ├── transcription.ts    # Provider abstraction
 │       ├── local-whisper.ts    # Offline transcription
 │       ├── openai.ts           # OpenAI / Ollama notes
+│       ├── calendar-storage.ts # Weekly calendar events
 │       └── local-storage.ts    # Markdown + JSON
 ├── preload/                    # contextBridge — typed API
 └── renderer/                   # React 19 + TypeScript</code></pre>
