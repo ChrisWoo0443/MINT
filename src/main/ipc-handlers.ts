@@ -254,6 +254,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
       broadcast('recording:status', 'recording')
       const micDeviceId = args.micDeviceId || 'default'
       audioCaptureService.startCapture(mainWindow, { micDeviceId })
+      return currentMeetingId
     } catch (startError) {
       console.error('Failed to start recording:', startError)
       currentMeetingId = null

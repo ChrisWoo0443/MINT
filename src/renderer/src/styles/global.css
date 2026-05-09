@@ -1717,8 +1717,16 @@ label {
   color: #5b6273;
   font-size: 10.5px;
   text-align: right;
-  border-bottom: 1px solid #20242c;
-  transform: translateY(-7px);
+  box-sizing: border-box;
+  position: relative;
+}
+
+.calendar-time-label {
+  position: absolute;
+  top: -7px;
+  right: 8px;
+  background: #0e0f12;
+  padding: 0 4px;
 }
 
 .calendar-day-col {
@@ -1891,6 +1899,12 @@ label {
 .event-modal-record {
   background: #34c759 !important;
   border-color: #34c759 !important;
+  color: white !important;
+}
+
+.event-modal-open {
+  background: #5b8def !important;
+  border-color: #5b8def !important;
   color: white !important;
 }
 

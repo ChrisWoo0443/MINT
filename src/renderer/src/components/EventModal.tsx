@@ -20,6 +20,7 @@ interface EditProps extends BaseProps {
   eventId: string
   onDeleted: () => void | Promise<void>
   onStartRecording: (title: string) => void
+  onOpenMeeting: (meetingId: string) => void
 }
 
 type EventModalProps = CreateProps | EditProps
@@ -43,6 +44,7 @@ export function EventModal(props: EventModalProps): React.JSX.Element {
   const [endLocal, setEndLocal] = useState('')
   const [notes, setNotes] = useState('')
   const [tagId, setTagId] = useState<string>('')
+  const [linkedMeetingId, setLinkedMeetingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
 
@@ -58,6 +60,7 @@ export function EventModal(props: EventModalProps): React.JSX.Element {
         setEndLocal(isoToLocalInput(event.endISO))
         setNotes(event.notes ?? '')
         setTagId(event.tagId ?? '')
+        setLinkedMeetingId(event.meetingId ?? null)
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -176,7 +179,16 @@ export function EventModal(props: EventModalProps): React.JSX.Element {
         {validationError && <div className="event-modal-error">{validationError}</div>}
 
         <div className="event-modal-actions">
-          {props.mode === 'edit' && (
+          {props.mode === 'edit' && linkedMeetingId && (
+            <button
+              className="event-modal-open"
+              disabled={loading}
+              onClick={() => props.onOpenMeeting(linkedMeetingId)}
+            >
+              Open meeting
+            </button>
+          )}
+          {props.mode === 'edit' && !linkedMeetingId && (
             <button
               className="event-modal-record"
               disabled={loading || !title.trim()}

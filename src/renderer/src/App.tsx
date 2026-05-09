@@ -71,7 +71,7 @@ function MainApp(): React.JSX.Element {
     setOnboardingComplete(true)
   }
 
-  const startRecordingWithTitle = async (title: string): Promise<void> => {
+  const startRecordingWithTitle = async (title: string, eventIdToLink?: string): Promise<void> => {
     try {
       const userName = localStorage.getItem('displayName') || 'You'
       const transcriptionProvider =
@@ -83,7 +83,7 @@ function MainApp(): React.JSX.Element {
           | 'small.en'
           | 'medium.en'
           | null) ?? 'small.en'
-      await window.mintAPI.startRecording({
+      const meetingId = await window.mintAPI.startRecording({
         title,
         userName,
         micDeviceId: localStorage.getItem('micDeviceId') || undefined,
@@ -96,6 +96,13 @@ function MainApp(): React.JSX.Element {
         ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
         ollamaModel: localStorage.getItem('ollamaModel') || undefined
       })
+      if (eventIdToLink && meetingId) {
+        try {
+          await window.mintAPI.calendar.update(eventIdToLink, { meetingId })
+        } catch (linkError) {
+          console.error('Failed to link calendar event to meeting:', linkError)
+        }
+      }
       setIsRecording(true)
       setView('recording')
     } catch (error) {
@@ -150,8 +157,13 @@ function MainApp(): React.JSX.Element {
     if (view === 'calendar') {
       return (
         <CalendarView
-          onStartRecordingFromEvent={(title) => {
-            void startRecordingWithTitle(title)
+          onStartRecordingFromEvent={(eventId, title) => {
+            void startRecordingWithTitle(title, eventId)
+          }}
+          onOpenMeeting={(meetingId) => {
+            setSelectedMeetingId(meetingId)
+            setHighlightQuery(null)
+            setView('detail')
           }}
         />
       )

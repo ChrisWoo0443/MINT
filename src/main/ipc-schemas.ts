@@ -105,6 +105,7 @@ const TitleSchema = z.string().trim().min(1).max(MAX_TITLE_LEN)
 const NotesSchema = z.string().trim().max(MAX_NOTES_LEN)
 const TagIdSchema = z.string().min(1).max(MAX_ID_LEN)
 const EventIdSchema = z.string().uuid()
+const MeetingIdRefSchema = z.string().min(1).max(MAX_ID_LEN)
 
 export const CalendarEventSchema = z
   .object({
@@ -114,6 +115,7 @@ export const CalendarEventSchema = z
     endISO: IsoDateString,
     notes: NotesSchema.optional(),
     tagId: TagIdSchema.optional(),
+    meetingId: MeetingIdRefSchema.optional(),
     createdAt: IsoDateString,
     updatedAt: IsoDateString
   })
@@ -163,7 +165,8 @@ const CalendarUpdatePatchSchema = z
     startISO: IsoDateString.optional(),
     endISO: IsoDateString.optional(),
     notes: NotesSchema.optional(),
-    tagId: TagIdSchema.optional()
+    tagId: TagIdSchema.optional(),
+    meetingId: MeetingIdRefSchema.optional()
   })
   .refine(
     (patch) =>
@@ -171,7 +174,8 @@ const CalendarUpdatePatchSchema = z
       patch.startISO !== undefined ||
       patch.endISO !== undefined ||
       patch.notes !== undefined ||
-      patch.tagId !== undefined,
+      patch.tagId !== undefined ||
+      patch.meetingId !== undefined,
     { message: 'patch must contain at least one field' }
   )
   .refine(

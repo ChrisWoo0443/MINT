@@ -10,7 +10,8 @@ const SCROLL_END_HOUR = 22
 type CreatingFor = { startISO: string; endISO: string } | null
 
 interface CalendarViewProps {
-  onStartRecordingFromEvent: (title: string) => void
+  onStartRecordingFromEvent: (eventId: string, title: string) => void
+  onOpenMeeting: (meetingId: string) => void
 }
 
 function getWeekStart(date: Date, weekStartsOn: number): Date {
@@ -88,7 +89,8 @@ const TAG_COLORS: Record<string, string> = {
 }
 
 export function CalendarView({
-  onStartRecordingFromEvent
+  onStartRecordingFromEvent,
+  onOpenMeeting
 }: CalendarViewProps): React.JSX.Element {
   const [weekStartsOn] = useState(() => detectWeekStart())
   const [weekAnchor, setWeekAnchor] = useState(() => getWeekStart(new Date(), weekStartsOn))
@@ -247,7 +249,7 @@ export function CalendarView({
                 className="calendar-time-slot"
                 style={{ height: `${HOUR_HEIGHT_PX}px` }}
               >
-                {formatHourLabel(hour)}
+                <span className="calendar-time-label">{formatHourLabel(hour)}</span>
               </div>
             ))}
           </div>
@@ -356,8 +358,13 @@ export function CalendarView({
             await refresh()
           }}
           onStartRecording={(title) => {
+            const eventId = editingEventId
             setEditingEventId(null)
-            onStartRecordingFromEvent(title)
+            if (eventId) onStartRecordingFromEvent(eventId, title)
+          }}
+          onOpenMeeting={(meetingId) => {
+            setEditingEventId(null)
+            onOpenMeeting(meetingId)
           }}
         />
       )}

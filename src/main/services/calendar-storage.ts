@@ -51,6 +51,7 @@ export class CalendarStorageService {
       endISO: args.endISO,
       notes: args.notes,
       tagId: args.tagId,
+      meetingId: undefined,
       createdAt: now,
       updatedAt: now
     }
@@ -75,6 +76,7 @@ export class CalendarStorageService {
       ...(patch.endISO !== undefined && { endISO: patch.endISO }),
       ...(patch.notes !== undefined && { notes: patch.notes }),
       ...(patch.tagId !== undefined && { tagId: patch.tagId }),
+      ...(patch.meetingId !== undefined && { meetingId: patch.meetingId }),
       updatedAt: new Date().toISOString()
     }
     file.events[index] = updated

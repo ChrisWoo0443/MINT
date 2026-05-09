@@ -62,6 +62,7 @@ export interface CalendarEvent {
   endISO: string
   notes?: string
   tagId?: string
+  meetingId?: string
   createdAt: string
   updatedAt: string
 }
@@ -85,6 +86,7 @@ export interface UpdateCalendarEventPatch {
   endISO?: string
   notes?: string
   tagId?: string
+  meetingId?: string
 }
 
 export type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
@@ -135,7 +137,7 @@ export type TranscriptionDegradedEvent =
   | { kind: 'terminal'; source: TranscriptionDegradedSource; reason: string }
 
 export interface MintAPI {
-  startRecording: (args: StartRecordingArgs) => Promise<void>
+  startRecording: (args: StartRecordingArgs) => Promise<string>
   stopRecording: () => Promise<void>
   onTranscriptChunk: (callback: (chunk: TranscriptChunk) => void) => () => void
   onRecordingStatus: (callback: (status: string) => void) => () => void
