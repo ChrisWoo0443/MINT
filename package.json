@@ -1,6 +1,6 @@
 {
   "name": "mint",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Meeting transcription and note generation desktop app",
   "main": "./out/main/index.js",
   "author": "ChrisWoo0443",
