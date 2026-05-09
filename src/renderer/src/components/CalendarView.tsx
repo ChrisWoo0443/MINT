@@ -224,20 +224,19 @@ export function CalendarView({
 
       {error && <div className="calendar-error">{error}</div>}
 
-      <div className="calendar-day-headers">
-        <div className="calendar-corner" />
-        {days.map((day) => (
-          <div
-            key={day.toISOString()}
-            className={`calendar-day-head ${isToday(day) ? 'today' : ''}`}
-          >
-            <div className="calendar-day-label">{formatDayLabel(day)}</div>
-            <div className="calendar-day-num">{day.getDate()}</div>
-          </div>
-        ))}
-      </div>
-
       <div className="calendar-scroll" ref={scrollRef}>
+        <div className="calendar-day-headers">
+          <div className="calendar-corner" />
+          {days.map((day) => (
+            <div
+              key={day.toISOString()}
+              className={`calendar-day-head ${isToday(day) ? 'today' : ''}`}
+            >
+              <div className="calendar-day-label">{formatDayLabel(day)}</div>
+              <div className="calendar-day-num">{day.getDate()}</div>
+            </div>
+          ))}
+        </div>
         <div
           className="calendar-grid"
           style={{ height: `${totalRows * HOUR_HEIGHT_PX}px` }}

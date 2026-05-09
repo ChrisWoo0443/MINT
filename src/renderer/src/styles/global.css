@@ -1671,6 +1671,9 @@ label {
   grid-template-columns: 56px repeat(7, 1fr);
   background: #14161a;
   border-bottom: 1px solid #2a2f38;
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .calendar-corner,
