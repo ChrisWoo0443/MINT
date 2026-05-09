@@ -98,7 +98,11 @@ function MainApp(): React.JSX.Element {
       })
       if (eventIdToLink && meetingId) {
         try {
+          const linkedEvent = await window.mintAPI.calendar.get(eventIdToLink)
           await window.mintAPI.calendar.update(eventIdToLink, { meetingId })
+          if (linkedEvent?.tagId) {
+            await window.mintAPI.setMeetingTags(meetingId, [linkedEvent.tagId])
+          }
         } catch (linkError) {
           console.error('Failed to link calendar event to meeting:', linkError)
         }
