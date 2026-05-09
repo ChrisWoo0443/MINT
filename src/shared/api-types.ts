@@ -55,6 +55,40 @@ export interface TagDefinition {
   color: string
 }
 
+export interface CalendarEvent {
+  id: string
+  title: string
+  startISO: string
+  endISO: string
+  notes?: string
+  tagId?: string
+  meetingId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EventsFile {
+  version: 1
+  events: CalendarEvent[]
+}
+
+export interface CreateCalendarEventArgs {
+  title: string
+  startISO: string
+  endISO: string
+  notes?: string
+  tagId?: string
+}
+
+export interface UpdateCalendarEventPatch {
+  title?: string
+  startISO?: string
+  endISO?: string
+  notes?: string
+  tagId?: string
+  meetingId?: string
+}
+
 export type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
 export type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
 
@@ -103,7 +137,7 @@ export type TranscriptionDegradedEvent =
   | { kind: 'terminal'; source: TranscriptionDegradedSource; reason: string }
 
 export interface MintAPI {
-  startRecording: (args: StartRecordingArgs) => Promise<void>
+  startRecording: (args: StartRecordingArgs) => Promise<string>
   stopRecording: () => Promise<void>
   onTranscriptChunk: (callback: (chunk: TranscriptChunk) => void) => () => void
   onRecordingStatus: (callback: (status: string) => void) => () => void
@@ -157,4 +191,11 @@ export interface MintAPI {
   destroyOverlay: () => void
   onWindowBlur: (callback: () => void) => () => void
   onWindowFocus: (callback: () => void) => () => void
+  calendar: {
+    list: (rangeStartISO: string, rangeEndISO: string) => Promise<CalendarEvent[]>
+    get: (id: string) => Promise<CalendarEvent | null>
+    create: (args: CreateCalendarEventArgs) => Promise<CalendarEvent>
+    update: (id: string, patch: UpdateCalendarEventPatch) => Promise<CalendarEvent>
+    delete: (id: string) => Promise<void>
+  }
 }

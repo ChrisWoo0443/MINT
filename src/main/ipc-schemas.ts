@@ -88,3 +88,105 @@ export const SetMeetingTagsArgsSchema = z.tuple([
 export const RenameMeetingArgsSchema = z.tuple([MeetingIdSchema, MeetingTitleSchema])
 
 export const SearchQuerySchema = z.string().max(MAX_NAME_LEN)
+
+const MAX_TITLE_LEN = 200
+const MAX_NOTES_LEN = 2000
+const MAX_RANGE_MS = 31 * 24 * 60 * 60 * 1000
+
+const IsoDateString = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine((value) => !Number.isNaN(Date.parse(value)), {
+    message: 'must be a parseable ISO 8601 datetime'
+  })
+
+const TitleSchema = z.string().trim().min(1).max(MAX_TITLE_LEN)
+const NotesSchema = z.string().trim().max(MAX_NOTES_LEN)
+const TagIdSchema = z.string().min(1).max(MAX_ID_LEN)
+const EventIdSchema = z.string().uuid()
+const MeetingIdRefSchema = z.string().min(1).max(MAX_ID_LEN)
+
+export const CalendarEventSchema = z
+  .object({
+    id: EventIdSchema,
+    title: TitleSchema,
+    startISO: IsoDateString,
+    endISO: IsoDateString,
+    notes: NotesSchema.optional(),
+    tagId: TagIdSchema.optional(),
+    meetingId: MeetingIdRefSchema.optional(),
+    createdAt: IsoDateString,
+    updatedAt: IsoDateString
+  })
+  .refine((event) => Date.parse(event.endISO) > Date.parse(event.startISO), {
+    message: 'endISO must be strictly greater than startISO',
+    path: ['endISO']
+  })
+
+export const CalendarListArgsSchema = z
+  .object({
+    rangeStartISO: IsoDateString,
+    rangeEndISO: IsoDateString
+  })
+  .refine(
+    (args) => Date.parse(args.rangeEndISO) > Date.parse(args.rangeStartISO),
+    { message: 'rangeEndISO must be strictly greater than rangeStartISO', path: ['rangeEndISO'] }
+  )
+  .refine(
+    (args) => Date.parse(args.rangeEndISO) - Date.parse(args.rangeStartISO) <= MAX_RANGE_MS,
+    { message: 'range cannot exceed 31 days', path: ['rangeEndISO'] }
+  )
+
+export const CalendarGetArgsSchema = z.object({
+  id: EventIdSchema
+})
+
+export const CalendarDeleteArgsSchema = z.object({
+  id: EventIdSchema
+})
+
+export const CalendarCreateArgsSchema = z
+  .object({
+    title: TitleSchema,
+    startISO: IsoDateString,
+    endISO: IsoDateString,
+    notes: NotesSchema.optional(),
+    tagId: TagIdSchema.optional()
+  })
+  .refine((args) => Date.parse(args.endISO) > Date.parse(args.startISO), {
+    message: 'endISO must be strictly greater than startISO',
+    path: ['endISO']
+  })
+
+const CalendarUpdatePatchSchema = z
+  .object({
+    title: TitleSchema.optional(),
+    startISO: IsoDateString.optional(),
+    endISO: IsoDateString.optional(),
+    notes: NotesSchema.optional(),
+    tagId: TagIdSchema.optional(),
+    meetingId: MeetingIdRefSchema.optional()
+  })
+  .refine(
+    (patch) =>
+      patch.title !== undefined ||
+      patch.startISO !== undefined ||
+      patch.endISO !== undefined ||
+      patch.notes !== undefined ||
+      patch.tagId !== undefined ||
+      patch.meetingId !== undefined,
+    { message: 'patch must contain at least one field' }
+  )
+  .refine(
+    (patch) => {
+      if (patch.startISO === undefined || patch.endISO === undefined) return true
+      return Date.parse(patch.endISO) > Date.parse(patch.startISO)
+    },
+    { message: 'endISO must be strictly greater than startISO when both are present', path: ['endISO'] }
+  )
+
+export const CalendarUpdateArgsSchema = z.object({
+  id: EventIdSchema,
+  patch: CalendarUpdatePatchSchema
+})

@@ -9,7 +9,13 @@ import {
   RecordingStartArgsSchema,
   GenerateNotesArgsSchema,
   TagsArraySchema,
-  SetMeetingTagsArgsSchema
+  SetMeetingTagsArgsSchema,
+  CalendarEventSchema,
+  CalendarListArgsSchema,
+  CalendarGetArgsSchema,
+  CalendarCreateArgsSchema,
+  CalendarUpdateArgsSchema,
+  CalendarDeleteArgsSchema
 } from '../src/main/ipc-schemas'
 
 describe('MeetingIdSchema', () => {
@@ -202,4 +208,156 @@ describe('OllamaUrlSchema — regression: pre-hardening vulnerability', () => {
       expect(() => OllamaUrlSchema.parse(url)).toThrow()
     })
   }
+})
+
+describe('CalendarEventSchema', () => {
+  const validEvent = {
+    id: '11111111-1111-4111-8111-111111111111',
+    title: 'Standup',
+    startISO: '2026-05-08T10:00:00-07:00',
+    endISO: '2026-05-08T10:30:00-07:00',
+    createdAt: '2026-05-08T09:00:00-07:00',
+    updatedAt: '2026-05-08T09:00:00-07:00'
+  }
+
+  it('accepts a minimal valid event', () => {
+    expect(() => CalendarEventSchema.parse(validEvent)).not.toThrow()
+  })
+
+  it('accepts optional notes and tagId', () => {
+    expect(() =>
+      CalendarEventSchema.parse({ ...validEvent, notes: 'agenda', tagId: 'blue' })
+    ).not.toThrow()
+  })
+
+  it('rejects endISO not strictly greater than startISO', () => {
+    expect(() =>
+      CalendarEventSchema.parse({ ...validEvent, endISO: validEvent.startISO })
+    ).toThrow()
+    expect(() =>
+      CalendarEventSchema.parse({
+        ...validEvent,
+        endISO: '2026-05-08T09:00:00-07:00'
+      })
+    ).toThrow()
+  })
+
+  it('rejects unparseable date strings', () => {
+    expect(() =>
+      CalendarEventSchema.parse({ ...validEvent, startISO: 'tomorrow at noon' })
+    ).toThrow()
+  })
+
+  it('rejects empty title', () => {
+    expect(() => CalendarEventSchema.parse({ ...validEvent, title: '' })).toThrow()
+  })
+
+  it('rejects title longer than 200 chars', () => {
+    expect(() =>
+      CalendarEventSchema.parse({ ...validEvent, title: 'x'.repeat(201) })
+    ).toThrow()
+  })
+
+  it('rejects notes longer than 2000 chars', () => {
+    expect(() =>
+      CalendarEventSchema.parse({ ...validEvent, notes: 'x'.repeat(2001) })
+    ).toThrow()
+  })
+})
+
+describe('CalendarListArgsSchema', () => {
+  it('accepts a 7-day range', () => {
+    expect(() =>
+      CalendarListArgsSchema.parse({
+        rangeStartISO: '2026-05-03T00:00:00-07:00',
+        rangeEndISO: '2026-05-10T00:00:00-07:00'
+      })
+    ).not.toThrow()
+  })
+
+  it('rejects rangeEndISO <= rangeStartISO', () => {
+    expect(() =>
+      CalendarListArgsSchema.parse({
+        rangeStartISO: '2026-05-10T00:00:00-07:00',
+        rangeEndISO: '2026-05-03T00:00:00-07:00'
+      })
+    ).toThrow()
+  })
+
+  it('rejects ranges longer than 31 days', () => {
+    expect(() =>
+      CalendarListArgsSchema.parse({
+        rangeStartISO: '2026-05-01T00:00:00-07:00',
+        rangeEndISO: '2026-06-02T00:00:00-07:00'
+      })
+    ).toThrow()
+  })
+})
+
+describe('CalendarCreateArgsSchema', () => {
+  it('accepts a minimal create payload', () => {
+    expect(() =>
+      CalendarCreateArgsSchema.parse({
+        title: 'Standup',
+        startISO: '2026-05-08T10:00:00-07:00',
+        endISO: '2026-05-08T10:30:00-07:00'
+      })
+    ).not.toThrow()
+  })
+
+  it('rejects when endISO <= startISO', () => {
+    expect(() =>
+      CalendarCreateArgsSchema.parse({
+        title: 'Standup',
+        startISO: '2026-05-08T10:30:00-07:00',
+        endISO: '2026-05-08T10:30:00-07:00'
+      })
+    ).toThrow()
+  })
+})
+
+describe('CalendarUpdateArgsSchema', () => {
+  const validId = '11111111-1111-4111-8111-111111111111'
+
+  it('accepts a partial patch', () => {
+    expect(() =>
+      CalendarUpdateArgsSchema.parse({ id: validId, patch: { title: 'Renamed' } })
+    ).not.toThrow()
+  })
+
+  it('rejects an empty patch', () => {
+    expect(() =>
+      CalendarUpdateArgsSchema.parse({ id: validId, patch: {} })
+    ).toThrow()
+  })
+
+  it('when both startISO and endISO are present in patch, endISO must be > startISO', () => {
+    expect(() =>
+      CalendarUpdateArgsSchema.parse({
+        id: validId,
+        patch: {
+          startISO: '2026-05-08T10:00:00-07:00',
+          endISO: '2026-05-08T10:00:00-07:00'
+        }
+      })
+    ).toThrow()
+  })
+})
+
+describe('CalendarGetArgsSchema and CalendarDeleteArgsSchema', () => {
+  it('accept a UUID-shaped id', () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    expect(() => CalendarGetArgsSchema.parse({ id })).not.toThrow()
+    expect(() => CalendarDeleteArgsSchema.parse({ id })).not.toThrow()
+  })
+
+  it('reject empty id', () => {
+    expect(() => CalendarGetArgsSchema.parse({ id: '' })).toThrow()
+    expect(() => CalendarDeleteArgsSchema.parse({ id: '' })).toThrow()
+  })
+
+  it('reject non-UUID id', () => {
+    expect(() => CalendarGetArgsSchema.parse({ id: 'not-a-uuid' })).toThrow()
+    expect(() => CalendarDeleteArgsSchema.parse({ id: 'not-a-uuid' })).toThrow()
+  })
 })

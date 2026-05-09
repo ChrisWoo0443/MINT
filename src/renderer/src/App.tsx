@@ -5,8 +5,9 @@ import { LiveRecording } from './components/LiveRecording'
 import { OverlayRecording } from './components/OverlayRecording'
 import { Settings } from './components/Settings'
 import { AudioSetup } from './components/AudioSetup'
+import { CalendarView } from './components/CalendarView'
 
-type View = 'meetings' | 'recording' | 'detail' | 'settings'
+type View = 'meetings' | 'recording' | 'detail' | 'settings' | 'calendar'
 
 const isOverlay = new URLSearchParams(window.location.search).get('overlay') === '1'
 
@@ -70,6 +71,49 @@ function MainApp(): React.JSX.Element {
     setOnboardingComplete(true)
   }
 
+  const startRecordingWithTitle = async (title: string, eventIdToLink?: string): Promise<void> => {
+    try {
+      const userName = localStorage.getItem('displayName') || 'You'
+      const transcriptionProvider =
+        (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram' | null) ?? 'local'
+      const whisperModel =
+        (localStorage.getItem('whisperModel') as
+          | 'tiny.en'
+          | 'base.en'
+          | 'small.en'
+          | 'medium.en'
+          | null) ?? 'small.en'
+      const meetingId = await window.mintAPI.startRecording({
+        title,
+        userName,
+        micDeviceId: localStorage.getItem('micDeviceId') || undefined,
+        deepgramApiKey: localStorage.getItem('deepgramApiKey') || undefined,
+        transcriptionProvider,
+        whisperModel,
+        openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
+        notesProvider:
+          (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,
+        ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
+        ollamaModel: localStorage.getItem('ollamaModel') || undefined
+      })
+      if (eventIdToLink && meetingId) {
+        try {
+          const linkedEvent = await window.mintAPI.calendar.get(eventIdToLink)
+          await window.mintAPI.calendar.update(eventIdToLink, { meetingId })
+          if (linkedEvent?.tagId) {
+            await window.mintAPI.setMeetingTags(meetingId, [linkedEvent.tagId])
+          }
+        } catch (linkError) {
+          console.error('Failed to link calendar event to meeting:', linkError)
+        }
+      }
+      setIsRecording(true)
+      setView('recording')
+    } catch (error) {
+      console.error('Failed to start recording:', error)
+    }
+  }
+
   if (!onboardingComplete) {
     return <AudioSetup onComplete={handleOnboardingComplete} />
   }
@@ -114,6 +158,21 @@ function MainApp(): React.JSX.Element {
       )
     }
 
+    if (view === 'calendar') {
+      return (
+        <CalendarView
+          onStartRecordingFromEvent={(eventId, title) => {
+            void startRecordingWithTitle(title, eventId)
+          }}
+          onOpenMeeting={(meetingId) => {
+            setSelectedMeetingId(meetingId)
+            setHighlightQuery(null)
+            setView('detail')
+          }}
+        />
+      )
+    }
+
     return (
       <MeetingList
         key={meetingListKey}
@@ -123,37 +182,8 @@ function MainApp(): React.JSX.Element {
           setView('detail')
         }}
         onStartRecording={async () => {
-          try {
-            const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
-            const userName = localStorage.getItem('displayName') || 'You'
-            const transcriptionProvider =
-              (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram' | null) ??
-              'local'
-            const whisperModel =
-              (localStorage.getItem('whisperModel') as
-                | 'tiny.en'
-                | 'base.en'
-                | 'small.en'
-                | 'medium.en'
-                | null) ?? 'small.en'
-            await window.mintAPI.startRecording({
-              title: defaultTitle,
-              userName,
-              micDeviceId: localStorage.getItem('micDeviceId') || undefined,
-              deepgramApiKey: localStorage.getItem('deepgramApiKey') || undefined,
-              transcriptionProvider,
-              whisperModel,
-              openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
-              notesProvider:
-                (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,
-              ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
-              ollamaModel: localStorage.getItem('ollamaModel') || undefined
-            })
-            setIsRecording(true)
-            setView('recording')
-          } catch (error) {
-            console.error('Failed to start recording:', error)
-          }
+          const defaultTitle = `Meeting — ${new Date().toLocaleString()}`
+          await startRecordingWithTitle(defaultTitle)
         }}
       />
     )
@@ -170,6 +200,12 @@ function MainApp(): React.JSX.Element {
             onClick={() => setView('meetings')}
           >
             Meetings
+          </button>
+          <button
+            className={view === 'calendar' ? 'active' : ''}
+            onClick={() => setView('calendar')}
+          >
+            Calendar
           </button>
           <button
             className={view === 'settings' ? 'active' : ''}
