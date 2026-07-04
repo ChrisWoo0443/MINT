@@ -102,6 +102,7 @@ export function MeetingList({
       setMeetings(meetingsData)
       setAvailableTags(tagsData)
     } catch (error) {
+      console.error('Failed to load meetings:', error)
       setLoadError(error instanceof Error ? error.message : 'Failed to load meetings.')
     }
   }, [])

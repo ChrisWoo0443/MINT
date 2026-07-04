@@ -107,6 +107,7 @@ export function MeetingDetail({
       setTranscripts(transcriptsData)
       setAvailableTags(tagsData)
     } catch (error) {
+      console.error('Failed to load meeting data:', error)
       setLoadError(error instanceof Error ? error.message : 'Failed to load this meeting.')
     }
   }, [meetingId])
