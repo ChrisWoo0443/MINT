@@ -85,6 +85,7 @@ export function MeetingDetail({
   const [searchQuery, setSearchQuery] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [activeHighlight, setActiveHighlight] = useState<string | null>(highlightQuery)
@@ -92,17 +93,22 @@ export function MeetingDetail({
   const contentRef = useRef<HTMLDivElement>(null)
 
   const loadMeetingData = useCallback(async (): Promise<void> => {
-    const [meetingData, notesData, transcriptsData, tagsData] = await Promise.all([
-      window.mintAPI.getMeeting(meetingId),
-      window.mintAPI.getMeetingNotes(meetingId),
-      window.mintAPI.getMeetingTranscripts(meetingId),
-      window.mintAPI.getTags()
-    ])
+    setLoadError(null)
+    try {
+      const [meetingData, notesData, transcriptsData, tagsData] = await Promise.all([
+        window.mintAPI.getMeeting(meetingId),
+        window.mintAPI.getMeetingNotes(meetingId),
+        window.mintAPI.getMeetingTranscripts(meetingId),
+        window.mintAPI.getTags()
+      ])
 
-    setMeeting(meetingData)
-    if (notesData) setNotes(notesData)
-    setTranscripts(transcriptsData)
-    setAvailableTags(tagsData)
+      setMeeting(meetingData)
+      if (notesData) setNotes(notesData)
+      setTranscripts(transcriptsData)
+      setAvailableTags(tagsData)
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to load this meeting.')
+    }
   }, [meetingId])
 
   useEffect(() => {
@@ -201,7 +207,14 @@ export function MeetingDetail({
     return (
       <div className="meeting-detail">
         <button onClick={onBack}>Back to Meetings</button>
-        <p>Loading...</p>
+        {loadError ? (
+          <div className="load-error" role="alert">
+            <p>{loadError}</p>
+            <button onClick={() => void loadMeetingData()}>Retry</button>
+          </div>
+        ) : (
+          <p>Loading...</p>
+        )}
       </div>
     )
   }

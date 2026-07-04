@@ -85,6 +85,7 @@ export function MeetingList({
   const dragCounters = useRef(new Map<string, number>())
   const transcriptionProvider = localStorage.getItem('transcriptionProvider') || 'local'
   const [canRecord, setCanRecord] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (transcriptionProvider !== 'deepgram') return
@@ -92,12 +93,17 @@ export function MeetingList({
   }, [transcriptionProvider])
 
   const loadData = useCallback(async (): Promise<void> => {
-    const [meetingsData, tagsData] = await Promise.all([
-      window.mintAPI.listMeetings(),
-      window.mintAPI.getTags()
-    ])
-    setMeetings(meetingsData)
-    setAvailableTags(tagsData)
+    setLoadError(null)
+    try {
+      const [meetingsData, tagsData] = await Promise.all([
+        window.mintAPI.listMeetings(),
+        window.mintAPI.getTags()
+      ])
+      setMeetings(meetingsData)
+      setAvailableTags(tagsData)
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to load meetings.')
+    }
   }, [])
 
   useEffect(() => {
@@ -352,7 +358,12 @@ export function MeetingList({
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
-      {meetings.length === 0 ? (
+      {loadError && searchResults === null ? (
+        <div className="load-error" role="alert">
+          <p>{loadError}</p>
+          <button onClick={() => void loadData()}>Retry</button>
+        </div>
+      ) : meetings.length === 0 ? (
         <p>No meetings yet. Start your first recording.</p>
       ) : searchResults !== null ? (
         searching && searchResults.length === 0 ? (

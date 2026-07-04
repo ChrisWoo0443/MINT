@@ -1934,3 +1934,25 @@ label {
   max-width: 600px;
   word-break: break-word;
 }
+
+/* ===== Inline error states ===== */
+.app-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--color-danger) 18%, transparent);
+  color: var(--color-danger);
+  border-bottom: 1px solid var(--color-danger);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+}
+.load-error {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-danger);
+}

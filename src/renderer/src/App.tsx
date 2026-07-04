@@ -46,6 +46,7 @@ function MainApp(): React.JSX.Element {
   const [onboardingComplete, setOnboardingComplete] = useState(
     () => localStorage.getItem('onboardingComplete') === 'true'
   )
+  const [startError, setStartError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isRecording) return
@@ -80,6 +81,7 @@ function MainApp(): React.JSX.Element {
   }
 
   const startRecordingWithTitle = async (title: string, eventIdToLink?: string): Promise<void> => {
+    setStartError(null)
     try {
       const userName = localStorage.getItem('displayName') || 'You'
       const transcriptionProvider =
@@ -114,6 +116,11 @@ function MainApp(): React.JSX.Element {
       setView('recording')
     } catch (error) {
       console.error('Failed to start recording:', error)
+      setStartError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to start recording. Check your audio and API settings.'
+      )
     }
   }
 
@@ -182,6 +189,14 @@ function MainApp(): React.JSX.Element {
   return (
     <>
       <div className="app-layout">
+        {startError && (
+          <div className="app-error-banner" role="alert">
+            <span>{startError}</span>
+            <button aria-label="Dismiss error" onClick={() => setStartError(null)}>
+              ✕
+            </button>
+          </div>
+        )}
         <nav className="sidebar">
           <button
             className={
