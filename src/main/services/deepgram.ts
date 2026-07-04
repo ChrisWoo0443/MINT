@@ -1,8 +1,4 @@
-import {
-  createClient,
-  LiveTranscriptionEvents,
-  type LiveTranscriptionEvent
-} from '@deepgram/sdk'
+import { createClient, LiveTranscriptionEvents, type LiveTranscriptionEvent } from '@deepgram/sdk'
 import type {
   TranscriptionService,
   TranscriptionStartConfig,
@@ -55,7 +51,10 @@ export interface DeepgramServiceOptions {
   clearTimeout?: (handle: ReturnType<typeof setTimeout>) => void
 }
 
-function defaultConnectionFactory(apiKey: string, live: DeepgramLiveConfig): DeepgramConnectionLike {
+function defaultConnectionFactory(
+  apiKey: string,
+  live: DeepgramLiveConfig
+): DeepgramConnectionLike {
   const deepgram = createClient(apiKey)
   return deepgram.listen.live({
     model: live.model,
@@ -83,7 +82,10 @@ export class DeepgramService implements TranscriptionService {
   private reconnectAttempt = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
-  private readonly connectionFactory: (apiKey: string, live: DeepgramLiveConfig) => DeepgramConnectionLike
+  private readonly connectionFactory: (
+    apiKey: string,
+    live: DeepgramLiveConfig
+  ) => DeepgramConnectionLike
   private readonly setTimeoutFn: (handler: () => void, ms: number) => ReturnType<typeof setTimeout>
   private readonly clearTimeoutFn: (handle: ReturnType<typeof setTimeout>) => void
 
