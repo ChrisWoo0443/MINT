@@ -51,11 +51,7 @@ const mintAPI: MintAPI = {
     }
   },
 
-  getAudioDevices: () => ipcRenderer.invoke('audio:getDevices'),
-  setAudioDevice: (deviceId: string) => ipcRenderer.invoke('audio:setDevice', deviceId),
-
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
-  openApp: (appPath: string) => ipcRenderer.invoke('shell:openApp', appPath),
   listOllamaModels: (url: string) => ipcRenderer.invoke('ollama:listModels', url),
 
   listMeetings: () => ipcRenderer.invoke('meetings:list'),
@@ -126,7 +122,7 @@ const mintAPI: MintAPI = {
     getStatus: () => ipcRenderer.invoke('updates:getStatus'),
     checkNow: () => ipcRenderer.invoke('updates:checkNow'),
     setAutoCheck: (enabled: boolean) => ipcRenderer.invoke('updates:setAutoCheck', enabled),
-    openExternal: (url: string) => ipcRenderer.invoke('updates:openExternal', url),
+    openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
     onStatus: (callback: (status: UpdateStatusPayload) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, status: UpdateStatusPayload): void => {
         callback(status)

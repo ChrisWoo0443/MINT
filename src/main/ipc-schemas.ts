@@ -5,9 +5,14 @@ const MAX_ID_LEN = 256
 const MAX_PATH_LEN = 4096
 const MAX_NAME_LEN = 1024
 
-export const MeetingIdSchema = z.string().min(1).max(MAX_ID_LEN)
+export const MeetingIdSchema = z
+  .string()
+  .min(1)
+  .max(MAX_ID_LEN)
+  .refine((id) => !id.includes('/') && !id.includes('\\') && !id.includes('..'), {
+    message: 'meeting id must not contain path separators or ".."'
+  })
 export const StoragePathSchema = z.string().min(1).max(MAX_PATH_LEN)
-export const ShellPathSchema = z.string().min(1).max(MAX_PATH_LEN)
 export const MeetingTitleSchema = z.string().min(1).max(MAX_NAME_LEN)
 
 export const ExternalUrlSchema = z

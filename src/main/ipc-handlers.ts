@@ -17,7 +17,6 @@ import { z } from 'zod'
 import {
   MeetingIdSchema,
   StoragePathSchema,
-  ShellPathSchema,
   ExternalUrlSchema,
   OllamaUrlSchema,
   WhisperModelSchema,
@@ -371,14 +370,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     micTranscriptionService?.sendAudio(chunk)
   })
 
-  ipcMain.handle('audio:getDevices', async () => {
-    return []
-  })
-
-  ipcMain.handle('audio:setDevice', async () => {
-    // Will be implemented in a future task
-  })
-
   // --- OpenAI handler ---
 
   ipcMain.handle('openai:listModels', async () => {
@@ -441,20 +432,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     updateCheckerService.setAutoCheck(z.boolean().parse(enabled))
   })
 
-  ipcMain.handle('updates:openExternal', async (_event, url: unknown) => {
-    await shell.openExternal(ExternalUrlSchema.parse(url))
-  })
-
   ipcMain.handle('app:getVersion', () => app.getVersion())
 
   // --- Shell handlers ---
 
   ipcMain.handle('shell:openExternal', async (_event, url: unknown) => {
     await shell.openExternal(ExternalUrlSchema.parse(url))
-  })
-
-  ipcMain.handle('shell:openApp', async (_event, appPath: unknown) => {
-    await shell.openPath(ShellPathSchema.parse(appPath))
   })
 
   // --- Calendar handlers ---

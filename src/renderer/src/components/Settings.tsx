@@ -170,10 +170,9 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleDeviceChange = async (deviceId: string): Promise<void> => {
+  const handleDeviceChange = (deviceId: string): void => {
     setSelectedDevice(deviceId)
     localStorage.setItem('micDeviceId', deviceId)
-    await window.mintAPI.setAudioDevice(deviceId)
   }
 
   const handleNameChange = (name: string): void => {

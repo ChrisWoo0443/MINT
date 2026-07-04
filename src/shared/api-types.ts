@@ -142,10 +142,7 @@ export interface MintAPI {
   onTranscriptChunk: (callback: (chunk: TranscriptChunk) => void) => () => void
   onRecordingStatus: (callback: (status: string) => void) => () => void
   onTranscriptionDegraded: (callback: (event: TranscriptionDegradedEvent) => void) => () => void
-  getAudioDevices: () => Promise<MediaDeviceInfo[]>
-  setAudioDevice: (deviceId: string) => Promise<void>
   openExternal: (url: string) => Promise<void>
-  openApp: (appPath: string) => Promise<string>
   listOllamaModels: (url: string) => Promise<string[] | null>
   listOpenAIModels: () => Promise<string[] | null>
   listMeetings: () => Promise<MeetingMetadata[]>

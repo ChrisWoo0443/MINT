@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   MeetingIdSchema,
   StoragePathSchema,
-  ShellPathSchema,
   ExternalUrlSchema,
   OllamaUrlSchema,
   WhisperModelSchema,
@@ -40,6 +39,21 @@ describe('MeetingIdSchema', () => {
   })
 })
 
+describe('MeetingIdSchema path traversal', () => {
+  it('rejects ids containing path separators or dot-dot', () => {
+    expect(() => MeetingIdSchema.parse('../../etc')).toThrow()
+    expect(() => MeetingIdSchema.parse('a/b')).toThrow()
+    expect(() => MeetingIdSchema.parse('a\\b')).toThrow()
+    expect(() => MeetingIdSchema.parse('a..b')).toThrow()
+  })
+
+  it('accepts real generated meeting ids', () => {
+    expect(MeetingIdSchema.parse('2026-07-03T10-30-00_weekly-standup')).toBe(
+      '2026-07-03T10-30-00_weekly-standup'
+    )
+  })
+})
+
 describe('StoragePathSchema', () => {
   it('accepts absolute path', () => {
     expect(StoragePathSchema.parse('/Users/alice/MINT')).toBe('/Users/alice/MINT')
@@ -51,16 +65,6 @@ describe('StoragePathSchema', () => {
 
   it('rejects non-string', () => {
     expect(() => StoragePathSchema.parse(42)).toThrow()
-  })
-})
-
-describe('ShellPathSchema', () => {
-  it('accepts a path string', () => {
-    expect(ShellPathSchema.parse('/Applications/Foo.app')).toBe('/Applications/Foo.app')
-  })
-
-  it('rejects empty string', () => {
-    expect(() => ShellPathSchema.parse('')).toThrow()
   })
 })
 
