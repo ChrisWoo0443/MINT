@@ -5,9 +5,8 @@ import { LiveRecording } from './components/LiveRecording'
 import { OverlayRecording } from './components/OverlayRecording'
 import { Settings } from './components/Settings'
 import { AudioSetup } from './components/AudioSetup'
-import { CalendarView } from './components/CalendarView'
 
-type View = 'meetings' | 'recording' | 'detail' | 'settings' | 'calendar'
+type View = 'meetings' | 'recording' | 'detail' | 'settings'
 
 const isOverlay = new URLSearchParams(window.location.search).get('overlay') === '1'
 
@@ -91,11 +90,11 @@ function MainApp(): React.JSX.Element {
         transcriptionProvider,
         whisperModel,
         openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
-        notesProvider:
-          (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,
+        notesProvider: (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,
         ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
         ollamaModel: localStorage.getItem('ollamaModel') || undefined
       })
+      // Calendar view is currently hidden; this link path is kept for when it returns.
       if (eventIdToLink && meetingId) {
         try {
           const linkedEvent = await window.mintAPI.calendar.get(eventIdToLink)
@@ -158,21 +157,6 @@ function MainApp(): React.JSX.Element {
       )
     }
 
-    if (view === 'calendar') {
-      return (
-        <CalendarView
-          onStartRecordingFromEvent={(eventId, title) => {
-            void startRecordingWithTitle(title, eventId)
-          }}
-          onOpenMeeting={(meetingId) => {
-            setSelectedMeetingId(meetingId)
-            setHighlightQuery(null)
-            setView('detail')
-          }}
-        />
-      )
-    }
-
     return (
       <MeetingList
         key={meetingListKey}
@@ -200,12 +184,6 @@ function MainApp(): React.JSX.Element {
             onClick={() => setView('meetings')}
           >
             Meetings
-          </button>
-          <button
-            className={view === 'calendar' ? 'active' : ''}
-            onClick={() => setView('calendar')}
-          >
-            Calendar
           </button>
           <button
             className={view === 'settings' ? 'active' : ''}
