@@ -273,7 +273,11 @@ export class LocalStorageService {
     let repaired = 0
     for (const meeting of meetings) {
       if (meeting.status !== 'recording') continue
-      await this.updateMeetingStatus(meeting.id, 'completed', meeting.endedAt ?? new Date().toISOString())
+      await this.updateMeetingStatus(
+        meeting.id,
+        'completed',
+        meeting.endedAt ?? new Date().toISOString()
+      )
       repaired++
     }
     return repaired
