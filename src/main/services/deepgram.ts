@@ -20,6 +20,14 @@ const MAX_RECONNECT_ATTEMPTS = RECONNECT_BACKOFF_MS.length
 
 type State = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'stopped' | 'terminal'
 
+interface DeepgramWord {
+  word: string
+  punctuated_word?: string
+  start: number
+  end: number
+  speaker?: number
+}
+
 export interface DeepgramConnectionLike {
   on(event: string, listener: (...args: unknown[]) => void): unknown
   off?(event: string, listener: (...args: unknown[]) => void): unknown
@@ -27,11 +35,18 @@ export interface DeepgramConnectionLike {
   finish(): unknown
 }
 
+export interface DeepgramLiveConfig {
+  model: string
+  diarize: boolean
+}
+
+export const DEFAULT_DEEPGRAM_MODEL = 'nova-3'
+
 export interface DeepgramServiceOptions {
   /**
    * Override the underlying connection factory (used by tests).
    */
-  connectionFactory?: (apiKey: string) => DeepgramConnectionLike
+  connectionFactory?: (apiKey: string, live: DeepgramLiveConfig) => DeepgramConnectionLike
   /**
    * Override timer functions (used by tests so reconnect logic doesn't depend
    * on real wall-clock time).
@@ -40,14 +55,14 @@ export interface DeepgramServiceOptions {
   clearTimeout?: (handle: ReturnType<typeof setTimeout>) => void
 }
 
-function defaultConnectionFactory(apiKey: string): DeepgramConnectionLike {
+function defaultConnectionFactory(apiKey: string, live: DeepgramLiveConfig): DeepgramConnectionLike {
   const deepgram = createClient(apiKey)
   return deepgram.listen.live({
-    model: 'nova-2',
+    model: live.model,
     language: 'en',
     smart_format: true,
     punctuate: true,
-    diarize: false,
+    diarize: live.diarize,
     interim_results: true,
     encoding: 'linear16',
     sample_rate: 16000
@@ -61,13 +76,14 @@ export class DeepgramService implements TranscriptionService {
   private state: State = 'idle'
   private apiKey = ''
   private speakerLabel = ''
+  private liveConfig: DeepgramLiveConfig = { model: DEFAULT_DEEPGRAM_MODEL, diarize: false }
   private pendingChunks: Buffer[] = []
   private pendingBytes = 0
   private droppedBytesSinceLastReport = 0
   private reconnectAttempt = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
-  private readonly connectionFactory: (apiKey: string) => DeepgramConnectionLike
+  private readonly connectionFactory: (apiKey: string, live: DeepgramLiveConfig) => DeepgramConnectionLike
   private readonly setTimeoutFn: (handler: () => void, ms: number) => ReturnType<typeof setTimeout>
   private readonly clearTimeoutFn: (handle: ReturnType<typeof setTimeout>) => void
 
@@ -105,6 +121,10 @@ export class DeepgramService implements TranscriptionService {
     }
     this.apiKey = apiKey
     this.speakerLabel = speakerLabel
+    this.liveConfig = {
+      model: config.deepgramModel ?? DEFAULT_DEEPGRAM_MODEL,
+      diarize: config.deepgramDiarize ?? false
+    }
     this.onResult = onResult
     this.state = 'connecting'
     this.reconnectAttempt = 0
@@ -122,7 +142,7 @@ export class DeepgramService implements TranscriptionService {
     return new Promise<void>((resolve, reject) => {
       let connection: DeepgramConnectionLike
       try {
-        connection = this.connectionFactory(this.apiKey)
+        connection = this.connectionFactory(this.apiKey, this.liveConfig)
       } catch (factoryError) {
         if (initial) {
           reject(factoryError)
@@ -188,18 +208,45 @@ export class DeepgramService implements TranscriptionService {
     const alternative = data.channel?.alternatives?.[0]
     if (!alternative || !alternative.transcript) return
 
-    const words = alternative.words || []
-    const startTime = words.length > 0 ? words[0].start : 0
-    const endTime = words.length > 0 ? words[words.length - 1].end : 0
+    const words = (alternative.words || []) as DeepgramWord[]
+    const isFinal = data.is_final ?? false
 
-    const result: TranscriptResult = {
-      speaker: this.speakerLabel,
-      content: alternative.transcript,
-      timestampStart: startTime,
-      timestampEnd: endTime,
-      isFinal: data.is_final ?? false
+    // Diarized speaker indices are only reliable on finals; interims keep the
+    // base label so the live view doesn't flicker between speaker numbers.
+    const canSplitBySpeaker =
+      this.liveConfig.diarize && isFinal && words.length > 0 && words[0].speaker !== undefined
+
+    if (!canSplitBySpeaker) {
+      const startTime = words.length > 0 ? words[0].start : 0
+      const endTime = words.length > 0 ? words[words.length - 1].end : 0
+      this.onResult?.({
+        speaker: this.speakerLabel,
+        content: alternative.transcript,
+        timestampStart: startTime,
+        timestampEnd: endTime,
+        isFinal
+      })
+      return
     }
-    this.onResult?.(result)
+
+    let runWords: DeepgramWord[] = []
+    const flushRun = (): void => {
+      if (runWords.length === 0) return
+      const speakerIndex = runWords[0].speaker ?? 0
+      this.onResult?.({
+        speaker: `Speaker ${speakerIndex + 1}`,
+        content: runWords.map((w) => w.punctuated_word ?? w.word).join(' '),
+        timestampStart: runWords[0].start,
+        timestampEnd: runWords[runWords.length - 1].end,
+        isFinal: true
+      })
+      runWords = []
+    }
+    for (const word of words) {
+      if (runWords.length > 0 && runWords[0].speaker !== word.speaker) flushRun()
+      runWords.push(word)
+    }
+    flushRun()
   }
 
   private handleClose(): void {

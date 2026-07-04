@@ -8,6 +8,8 @@ export interface TranscriptResult {
 
 export interface TranscriptionStartConfig {
   deepgramApiKey?: string
+  deepgramModel?: string
+  deepgramDiarize?: boolean
   whisperModelName?: string
   whisperEngine?: unknown
 }
