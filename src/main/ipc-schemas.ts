@@ -67,7 +67,8 @@ export const GenerateNotesArgsSchema = z.object({
   openaiModel: z.string().max(MAX_NAME_LEN).optional(),
   notesProvider: z.enum(['openai', 'ollama']).optional(),
   ollamaUrl: OllamaUrlSchema.optional(),
-  ollamaModel: z.string().max(MAX_NAME_LEN).optional()
+  ollamaModel: z.string().max(MAX_NAME_LEN).optional(),
+  customPrompt: z.string().max(4000).optional()
 })
 
 export const SecretNameSchema = z.enum(['deepgramApiKey', 'openaiApiKey'])

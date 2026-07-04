@@ -359,10 +359,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
               apiKey: openaiApiKey,
               openaiModel: openaiModel || undefined
             })
-      const { notes } = await openaiService.generateNotes(fullTranscript, {
-        title: meetingMeta.title,
-        startedAt: meetingMeta.startedAt
-      })
+      const { notes } = await openaiService.generateNotes(
+        fullTranscript,
+        { title: meetingMeta.title, startedAt: meetingMeta.startedAt },
+        args.customPrompt
+      )
 
       await localStorageService.saveNotes(
         meetingId,

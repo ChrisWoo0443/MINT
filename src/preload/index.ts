@@ -76,6 +76,7 @@ const mintAPI: MintAPI = {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
+    customPrompt?: string
   }) => ipcRenderer.invoke('meetings:generateNotes', args),
 
   listOpenAIModels: () => ipcRenderer.invoke('openai:listModels'),

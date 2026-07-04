@@ -164,6 +164,7 @@ export interface MintAPI {
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
+    customPrompt?: string
   }) => Promise<NoteData>
   whisper: {
     listModels: () => Promise<WhisperModelInfo[]>

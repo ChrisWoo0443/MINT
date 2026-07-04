@@ -183,7 +183,8 @@ export function MeetingDetail({
         openaiModel: localStorage.getItem('openaiModel') || undefined,
         notesProvider,
         ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
-        ollamaModel: localStorage.getItem('ollamaModel') || undefined
+        ollamaModel: localStorage.getItem('ollamaModel') || undefined,
+        customPrompt: localStorage.getItem('notesCustomPrompt') || undefined
       })
       setNotes(generatedNotes)
       setMeeting({ ...meeting, status: 'completed' })

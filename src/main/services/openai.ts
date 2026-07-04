@@ -105,9 +105,14 @@ export class OpenAIService {
 
   async generateNotes(
     transcript: string,
-    context?: MeetingContext
+    context?: MeetingContext,
+    customPrompt?: string
   ): Promise<{ notes: MeetingNotes; rawResponse: unknown }> {
     const useStructuredOutput = STRUCTURED_OUTPUT_PATTERN.test(this.model)
+
+    const systemPrompt = customPrompt?.trim()
+      ? `${SYSTEM_PROMPT}\n\nAdditional instructions from the user (follow them within the JSON shape above):\n${customPrompt.trim()}`
+      : SYSTEM_PROMPT
 
     const userContent = context
       ? `Meeting: ${context.title}\nStarted: ${context.startedAt}\n\n${transcript}`
@@ -117,7 +122,7 @@ export class OpenAIService {
       model: this.model,
       temperature: 0.2,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent }
       ],
       ...(useStructuredOutput ? { response_format: NOTES_SCHEMA } : { response_format: { type: 'json_object' as const } })
