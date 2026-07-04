@@ -398,8 +398,8 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
               </select>
             )}
             <p className="settings-hint">
-              Defaults to gpt-4o. Newer models with structured-output support produce the most
-              reliable notes.
+              Notes are generated with the model selected here. Newer models with
+              structured-output support produce the most reliable notes.
             </p>
           </>
         )}

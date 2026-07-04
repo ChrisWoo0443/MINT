@@ -54,10 +54,6 @@ export const RecordingStartArgsSchema = z.object({
   title: MeetingTitleSchema,
   userName: z.string().min(1).max(MAX_NAME_LEN),
   micDeviceId: z.string().max(MAX_ID_LEN).optional(),
-  openaiModel: z.string().max(MAX_NAME_LEN).optional(),
-  notesProvider: z.enum(['openai', 'ollama']).optional(),
-  ollamaUrl: OllamaUrlSchema.optional(),
-  ollamaModel: z.string().max(MAX_NAME_LEN).optional(),
   transcriptionProvider: z.enum(['local', 'deepgram']).optional(),
   whisperModel: WhisperModelSchema.optional()
 })

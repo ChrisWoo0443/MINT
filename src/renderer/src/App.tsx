@@ -96,10 +96,7 @@ function MainApp(): React.JSX.Element {
         userName,
         micDeviceId: localStorage.getItem('micDeviceId') || undefined,
         transcriptionProvider,
-        whisperModel,
-        notesProvider: (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,
-        ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
-        ollamaModel: localStorage.getItem('ollamaModel') || undefined
+        whisperModel
       })
       // Calendar view is currently hidden; this link path is kept for when it returns.
       if (eventIdToLink && meetingId) {

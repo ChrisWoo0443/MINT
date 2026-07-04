@@ -19,10 +19,6 @@ export interface StartRecordingArgs {
   micDeviceId?: string
   transcriptionProvider?: 'local' | 'deepgram'
   whisperModel?: 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
-  openaiModel?: string
-  notesProvider?: 'openai' | 'ollama'
-  ollamaUrl?: string
-  ollamaModel?: string
 }
 
 export type SecretName = 'deepgramApiKey' | 'openaiApiKey'

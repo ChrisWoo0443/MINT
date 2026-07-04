@@ -132,35 +132,35 @@ describe('RecordingStartArgsSchema', () => {
       title: 'Team sync',
       userName: 'Chris',
       micDeviceId: 'abc',
-      deepgramApiKey: 'k',
-      openaiApiKey: 'k',
-      notesProvider: 'ollama' as const,
-      ollamaUrl: 'http://localhost:11434',
-      ollamaModel: 'llama3',
       transcriptionProvider: 'local' as const,
       whisperModel: 'small.en' as const
     }
-    expect(RecordingStartArgsSchema.parse(args).ollamaUrl).toBe('http://localhost:11434')
+    const parsed = RecordingStartArgsSchema.parse(args)
+    expect(parsed.micDeviceId).toBe('abc')
+    expect(parsed.transcriptionProvider).toBe('local')
+    expect(parsed.whisperModel).toBe('small.en')
   })
 
   it('rejects missing title', () => {
     expect(() => RecordingStartArgsSchema.parse({ userName: 'Chris' })).toThrow()
   })
 
-  it('rejects unknown notesProvider', () => {
-    expect(() =>
-      RecordingStartArgsSchema.parse({ title: 't', userName: 'u', notesProvider: 'bogus' })
-    ).toThrow()
+  it('strips unknown notesProvider field', () => {
+    const parsed = RecordingStartArgsSchema.parse({
+      title: 't',
+      userName: 'u',
+      notesProvider: 'bogus'
+    })
+    expect(parsed).not.toHaveProperty('notesProvider')
   })
 
-  it('rejects non-loopback ollamaUrl', () => {
-    expect(() =>
-      RecordingStartArgsSchema.parse({
-        title: 't',
-        userName: 'u',
-        ollamaUrl: 'http://evil.example.com'
-      })
-    ).toThrow()
+  it('strips unknown ollamaUrl field', () => {
+    const parsed = RecordingStartArgsSchema.parse({
+      title: 't',
+      userName: 'u',
+      ollamaUrl: 'http://evil.example.com'
+    })
+    expect(parsed).not.toHaveProperty('ollamaUrl')
   })
 })
 
