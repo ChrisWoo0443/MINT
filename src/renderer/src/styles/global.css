@@ -1916,3 +1916,21 @@ label {
   border-color: #f25c54 !important;
   color: #f25c54 !important;
 }
+
+/* ===== Error boundary ===== */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.error-boundary-message {
+  color: var(--color-danger);
+  font-family: monospace;
+  max-width: 600px;
+  word-break: break-word;
+}
