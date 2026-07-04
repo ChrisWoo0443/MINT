@@ -166,7 +166,11 @@ const TARGET_SAMPLE_RATE = 16000
 
 let activeStreams: MediaStream[] = []
 let activeAudioContext: AudioContext | null = null
-let activeProcessors: ScriptProcessorNode[] = []
+let activeWorkletNodes: AudioWorkletNode[] = []
+
+// 1600 samples @ 16 kHz = 100 ms per chunk — comparable cadence to the old
+// 4096-sample ScriptProcessor at 48 kHz.
+const CHUNK_SIZE_SAMPLES = 1600
 
 function convertFloat32ToLinear16(float32Samples: Float32Array): Buffer {
   const pcmBuffer = Buffer.alloc(float32Samples.length * 2)
@@ -178,52 +182,31 @@ function convertFloat32ToLinear16(float32Samples: Float32Array): Buffer {
   return pcmBuffer
 }
 
-function downsampleBuffer(
-  inputBuffer: Float32Array,
-  inputSampleRate: number,
-  outputSampleRate: number
-): Float32Array {
-  if (inputSampleRate === outputSampleRate) {
-    return inputBuffer
-  }
-  const sampleRateRatio = inputSampleRate / outputSampleRate
-  const outputLength = Math.round(inputBuffer.length / sampleRateRatio)
-  const outputBuffer = new Float32Array(outputLength)
-  for (let i = 0; i < outputLength; i++) {
-    const sourceIndex = i * sampleRateRatio
-    const lowerIndex = Math.floor(sourceIndex)
-    const upperIndex = Math.min(lowerIndex + 1, inputBuffer.length - 1)
-    const interpolationFactor = sourceIndex - lowerIndex
-    outputBuffer[i] =
-      inputBuffer[lowerIndex] * (1 - interpolationFactor) +
-      inputBuffer[upperIndex] * interpolationFactor
-  }
-  return outputBuffer
-}
-
-function createAudioPipeline(
+async function createAudioPipeline(
   source: MediaStreamAudioSourceNode,
   audioContext: AudioContext,
   ipcChannel: string
-): ScriptProcessorNode {
-  const nativeSampleRate = audioContext.sampleRate
-  const processor = audioContext.createScriptProcessor(4096, 1, 1)
-
-  processor.onaudioprocess = (audioProcessingEvent: AudioProcessingEvent): void => {
-    const inputChannelData = audioProcessingEvent.inputBuffer.getChannelData(0)
-    const downsampledData = downsampleBuffer(inputChannelData, nativeSampleRate, TARGET_SAMPLE_RATE)
-    const linear16Chunk = convertFloat32ToLinear16(downsampledData)
-    ipcRenderer.send(ipcChannel, linear16Chunk)
+): Promise<AudioWorkletNode> {
+  const workletNode = new AudioWorkletNode(audioContext, 'pcm-downsampler', {
+    numberOfInputs: 1,
+    numberOfOutputs: 1,
+    processorOptions: { targetSampleRate: TARGET_SAMPLE_RATE, chunkSize: CHUNK_SIZE_SAMPLES }
+  })
+  workletNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
+    ipcRenderer.send(ipcChannel, convertFloat32ToLinear16(event.data))
   }
-
-  source.connect(processor)
-  processor.connect(audioContext.destination)
-  return processor
+  source.connect(workletNode)
+  // The processor writes no output (silence); connecting keeps the graph alive.
+  workletNode.connect(audioContext.destination)
+  return workletNode
 }
 
 async function startAudioCapture(deviceConfig: { micDeviceId: string }): Promise<void> {
   try {
     activeAudioContext = new AudioContext()
+    await activeAudioContext.audioWorklet.addModule(
+      new URL('pcm-worklet.js', window.location.href).toString()
+    )
 
     const micConstraints: MediaStreamConstraints = {
       audio:
@@ -234,18 +217,20 @@ async function startAudioCapture(deviceConfig: { micDeviceId: string }): Promise
     const micStream = await navigator.mediaDevices.getUserMedia(micConstraints)
     activeStreams.push(micStream)
     const micSource = activeAudioContext.createMediaStreamSource(micStream)
-    activeProcessors.push(createAudioPipeline(micSource, activeAudioContext, 'audio:chunk:mic'))
+    activeWorkletNodes.push(
+      await createAudioPipeline(micSource, activeAudioContext, 'audio:chunk:mic')
+    )
   } catch (captureError) {
     console.error('Failed to start audio capture:', captureError)
   }
 }
 
 function stopAudioCapture(): void {
-  for (const processor of activeProcessors) {
-    processor.disconnect()
-    processor.onaudioprocess = null
+  for (const node of activeWorkletNodes) {
+    node.port.onmessage = null
+    node.disconnect()
   }
-  activeProcessors = []
+  activeWorkletNodes = []
 
   if (activeAudioContext) {
     activeAudioContext.close().catch((closeError) => {
