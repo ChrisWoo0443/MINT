@@ -45,14 +45,10 @@ export const OllamaUrlSchema = z
 
 export const WhisperModelSchema = z.enum(['tiny.en', 'base.en', 'small.en', 'medium.en'])
 
-const ApiKeySchema = z.string().min(1).max(512)
-
 export const RecordingStartArgsSchema = z.object({
   title: MeetingTitleSchema,
   userName: z.string().min(1).max(MAX_NAME_LEN),
   micDeviceId: z.string().max(MAX_ID_LEN).optional(),
-  deepgramApiKey: ApiKeySchema.optional(),
-  openaiApiKey: ApiKeySchema.optional(),
   openaiModel: z.string().max(MAX_NAME_LEN).optional(),
   notesProvider: z.enum(['openai', 'ollama']).optional(),
   ollamaUrl: OllamaUrlSchema.optional(),
@@ -63,14 +59,14 @@ export const RecordingStartArgsSchema = z.object({
 
 export const GenerateNotesArgsSchema = z.object({
   meetingId: MeetingIdSchema,
-  openaiApiKey: ApiKeySchema.optional(),
   openaiModel: z.string().max(MAX_NAME_LEN).optional(),
   notesProvider: z.enum(['openai', 'ollama']).optional(),
   ollamaUrl: OllamaUrlSchema.optional(),
   ollamaModel: z.string().max(MAX_NAME_LEN).optional()
 })
 
-export const OpenAIApiKeyArgSchema = ApiKeySchema
+export const SecretNameSchema = z.enum(['deepgramApiKey', 'openaiApiKey'])
+export const SecretSetArgsSchema = z.tuple([SecretNameSchema, z.string().max(512)])
 
 export const TagSchema = z.object({
   id: z.string().min(1).max(MAX_ID_LEN),

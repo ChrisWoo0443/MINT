@@ -15,7 +15,9 @@ import {
   CalendarGetArgsSchema,
   CalendarCreateArgsSchema,
   CalendarUpdateArgsSchema,
-  CalendarDeleteArgsSchema
+  CalendarDeleteArgsSchema,
+  SecretNameSchema,
+  SecretSetArgsSchema
 } from '../src/main/ipc-schemas'
 
 describe('MeetingIdSchema', () => {
@@ -359,5 +361,27 @@ describe('CalendarGetArgsSchema and CalendarDeleteArgsSchema', () => {
   it('reject non-UUID id', () => {
     expect(() => CalendarGetArgsSchema.parse({ id: 'not-a-uuid' })).toThrow()
     expect(() => CalendarDeleteArgsSchema.parse({ id: 'not-a-uuid' })).toThrow()
+  })
+})
+
+describe('secrets schemas', () => {
+  it('accepts known secret names only', () => {
+    expect(SecretNameSchema.parse('deepgramApiKey')).toBe('deepgramApiKey')
+    expect(SecretNameSchema.parse('openaiApiKey')).toBe('openaiApiKey')
+    expect(() => SecretNameSchema.parse('path')).toThrow()
+  })
+
+  it('allows empty string value (clears the secret) but caps length', () => {
+    expect(SecretSetArgsSchema.parse(['deepgramApiKey', ''])).toEqual(['deepgramApiKey', ''])
+    expect(() => SecretSetArgsSchema.parse(['deepgramApiKey', 'x'.repeat(513)])).toThrow()
+  })
+
+  it('rejects deepgramApiKey inside recording:start args', () => {
+    const parsed = RecordingStartArgsSchema.parse({
+      title: 'Standup',
+      userName: 'Chris',
+      deepgramApiKey: 'should-be-stripped'
+    })
+    expect('deepgramApiKey' in parsed).toBe(false)
   })
 })

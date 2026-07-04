@@ -84,8 +84,12 @@ export function MeetingList({
   const [searching, setSearching] = useState(false)
   const dragCounters = useRef(new Map<string, number>())
   const transcriptionProvider = localStorage.getItem('transcriptionProvider') || 'local'
-  const canRecord =
-    transcriptionProvider === 'local' || Boolean(localStorage.getItem('deepgramApiKey'))
+  const [canRecord, setCanRecord] = useState(true)
+
+  useEffect(() => {
+    if (transcriptionProvider !== 'deepgram') return
+    window.mintAPI.secrets.has('deepgramApiKey').then((present) => setCanRecord(present))
+  }, [transcriptionProvider])
 
   const loadData = useCallback(async (): Promise<void> => {
     const [meetingsData, tagsData] = await Promise.all([

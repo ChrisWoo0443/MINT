@@ -34,7 +34,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   )
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
   const [storagePath, setStoragePath] = useState('')
-  const [deepgramKey, setDeepgramKey] = useState(() => localStorage.getItem('deepgramApiKey') || '')
+  const [deepgramKey, setDeepgramKey] = useState('')
   const [transcriptionProvider, setTranscriptionProvider] = useState<'local' | 'deepgram'>(
     () => (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram') || 'local'
   )
@@ -46,7 +46,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   const [notesProvider, setNotesProvider] = useState<'openai' | 'ollama'>(
     () => (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || 'openai'
   )
-  const [openaiKey, setOpenaiKey] = useState(() => localStorage.getItem('openaiApiKey') || '')
+  const [openaiKey, setOpenaiKey] = useState('')
   const [openaiModel, setOpenaiModel] = useState(
     () => localStorage.getItem('openaiModel') || 'gpt-4o'
   )
@@ -84,6 +84,11 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
     window.mintAPI.getTags().then(setTags)
   }, [loadDevices])
 
+  useEffect(() => {
+    window.mintAPI.secrets.get('deepgramApiKey').then((v) => setDeepgramKey(v ?? ''))
+    window.mintAPI.secrets.get('openaiApiKey').then((v) => setOpenaiKey(v ?? ''))
+  }, [])
+
   const loadOllamaModels = useCallback(
     async (url: string): Promise<void> => {
       setOllamaStatus('loading')
@@ -117,7 +122,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
       return
     }
     setOpenaiStatus('loading')
-    const models = await window.mintAPI.listOpenAIModels(key)
+    const models = await window.mintAPI.listOpenAIModels()
     if (models === null) {
       setOpenaiModels([])
       setOpenaiStatus('error')
@@ -324,7 +329,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
               value={deepgramKey}
               onChange={(e) => {
                 setDeepgramKey(e.target.value)
-                localStorage.setItem('deepgramApiKey', e.target.value)
+                void window.mintAPI.secrets.set('deepgramApiKey', e.target.value)
               }}
               placeholder="Enter Deepgram API key"
             />
@@ -357,7 +362,7 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
               value={openaiKey}
               onChange={(e) => {
                 setOpenaiKey(e.target.value)
-                localStorage.setItem('openaiApiKey', e.target.value)
+                void window.mintAPI.secrets.set('openaiApiKey', e.target.value)
               }}
               placeholder="Enter OpenAI API key"
             />

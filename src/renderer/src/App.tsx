@@ -20,6 +20,15 @@ if (!storedTranscriptionProvider) {
   }
 }
 
+for (const legacyKeyName of ['deepgramApiKey', 'openaiApiKey'] as const) {
+  const legacyValue = localStorage.getItem(legacyKeyName)
+  if (legacyValue) {
+    void window.mintAPI.secrets.set(legacyKeyName, legacyValue).then(() => {
+      localStorage.removeItem(legacyKeyName)
+    })
+  }
+}
+
 function App(): React.JSX.Element {
   if (isOverlay) {
     return <OverlayRecording />
@@ -86,10 +95,8 @@ function MainApp(): React.JSX.Element {
         title,
         userName,
         micDeviceId: localStorage.getItem('micDeviceId') || undefined,
-        deepgramApiKey: localStorage.getItem('deepgramApiKey') || undefined,
         transcriptionProvider,
         whisperModel,
-        openaiApiKey: localStorage.getItem('openaiApiKey') || undefined,
         notesProvider: (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || undefined,
         ollamaUrl: localStorage.getItem('ollamaUrl') || undefined,
         ollamaModel: localStorage.getItem('ollamaModel') || undefined
@@ -150,6 +157,8 @@ function MainApp(): React.JSX.Element {
             setOnboardingComplete(false)
           }}
           onResetApp={() => {
+            void window.mintAPI.secrets.set('deepgramApiKey', '')
+            void window.mintAPI.secrets.set('openaiApiKey', '')
             localStorage.clear()
             setOnboardingComplete(false)
           }}

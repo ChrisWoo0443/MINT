@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow, dialog, shell, webContents } from 'electron'
+import { app, ipcMain, BrowserWindow, dialog, shell, webContents, safeStorage } from 'electron'
 import { join } from 'node:path'
 import { AudioCaptureService } from './services/audio-capture'
 import { AudioTeeService } from './services/audiotee'
@@ -12,6 +12,7 @@ import { WhisperEngine } from './services/whisper-engine'
 import type { TranscriptionService } from './services/transcription'
 import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
 import type { TranscriptionDegradedEvent } from '../shared/api-types'
+import { SecretsStore } from './services/secrets-store'
 import { z } from 'zod'
 import {
   MeetingIdSchema,
@@ -23,7 +24,8 @@ import {
   RenameMeetingArgsSchema,
   RecordingStartArgsSchema,
   GenerateNotesArgsSchema,
-  OpenAIApiKeyArgSchema,
+  SecretNameSchema,
+  SecretSetArgsSchema,
   TagsArraySchema,
   SetMeetingTagsArgsSchema,
   SearchQuerySchema,
@@ -52,6 +54,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   const localStorageService = new LocalStorageService()
   const calendarStorageService = new CalendarStorageService(localStorageService.getStoragePath())
   const whisperModelManager = new WhisperModelManager(join(app.getPath('userData'), 'models'))
+  const secretsStore = new SecretsStore(app.getPath('userData'), safeStorage)
 
   const updateCheckerService = new UpdateCheckerService({
     currentVersion: app.getVersion(),
@@ -97,6 +100,21 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     if (result.canceled || result.filePaths.length === 0) return null
     return result.filePaths[0]
   })
+
+  // --- Secrets handlers ---
+
+  ipcMain.handle('secrets:get', (_event, name: unknown) =>
+    secretsStore.get(SecretNameSchema.parse(name))
+  )
+
+  ipcMain.handle('secrets:set', (_event, name: unknown, value: unknown) => {
+    const [secretName, secretValue] = SecretSetArgsSchema.parse([name, value])
+    secretsStore.set(secretName, secretValue)
+  })
+
+  ipcMain.handle('secrets:has', (_event, name: unknown) =>
+    secretsStore.has(SecretNameSchema.parse(name))
+  )
 
   // --- Meeting data handlers ---
 
@@ -187,7 +205,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         systemTranscriptionService = new DeepgramService()
       }
 
-      const deepgramApiKey = args.deepgramApiKey || process.env.DEEPGRAM_API_KEY || ''
+      const deepgramApiKey = secretsStore.get('deepgramApiKey') ?? ''
 
       micTranscriptionService.onDegraded?.((event) => {
         broadcast('transcription:degraded', {
@@ -288,7 +306,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   ipcMain.handle('meetings:generateNotes', async (_event, rawArgs: unknown) => {
     const args = GenerateNotesArgsSchema.parse(rawArgs)
     const { meetingId } = args
-    const openaiApiKey = args.openaiApiKey || process.env.OPENAI_API_KEY || ''
+    const openaiApiKey = secretsStore.get('openaiApiKey') ?? ''
     const openaiModel = args.openaiModel || ''
     const notesProvider = args.notesProvider || 'openai'
     const ollamaUrl = args.ollamaUrl || 'http://localhost:11434'
@@ -363,11 +381,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   // --- OpenAI handler ---
 
-  ipcMain.handle('openai:listModels', async (_event, apiKey: unknown) => {
+  ipcMain.handle('openai:listModels', async () => {
     try {
-      const safeKey = OpenAIApiKeyArgSchema.parse(apiKey)
-      const models = await OpenAIService.listChatModels(safeKey)
-      return models
+      const apiKey = secretsStore.get('openaiApiKey')
+      if (!apiKey) return null
+      return await OpenAIService.listChatModels(apiKey)
     } catch (error) {
       console.error('[MINT] OpenAI listModels error:', error)
       return null

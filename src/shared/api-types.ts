@@ -17,15 +17,15 @@ export interface StartRecordingArgs {
   title: string
   userName: string
   micDeviceId?: string
-  deepgramApiKey?: string
   transcriptionProvider?: 'local' | 'deepgram'
   whisperModel?: 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
-  openaiApiKey?: string
   openaiModel?: string
   notesProvider?: 'openai' | 'ollama'
   ollamaUrl?: string
   ollamaModel?: string
 }
+
+export type SecretName = 'deepgramApiKey' | 'openaiApiKey'
 
 export interface MeetingMetadata {
   id: string
@@ -147,7 +147,7 @@ export interface MintAPI {
   openExternal: (url: string) => Promise<void>
   openApp: (appPath: string) => Promise<string>
   listOllamaModels: (url: string) => Promise<string[] | null>
-  listOpenAIModels: (apiKey: string) => Promise<string[] | null>
+  listOpenAIModels: () => Promise<string[] | null>
   listMeetings: () => Promise<MeetingMetadata[]>
   searchMeetings: (query: string) => Promise<MeetingMetadata[]>
   getMeeting: (meetingId: string) => Promise<MeetingMetadata>
@@ -163,7 +163,6 @@ export interface MintAPI {
   setMeetingTags: (meetingId: string, tags: string[]) => Promise<void>
   generateNotes: (args: {
     meetingId: string
-    openaiApiKey?: string
     openaiModel?: string
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
@@ -197,5 +196,10 @@ export interface MintAPI {
     create: (args: CreateCalendarEventArgs) => Promise<CalendarEvent>
     update: (id: string, patch: UpdateCalendarEventPatch) => Promise<CalendarEvent>
     delete: (id: string) => Promise<void>
+  }
+  secrets: {
+    get: (name: SecretName) => Promise<string | null>
+    set: (name: SecretName, value: string) => Promise<void>
+    has: (name: SecretName) => Promise<boolean>
   }
 }

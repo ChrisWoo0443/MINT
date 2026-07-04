@@ -10,7 +10,8 @@ import type {
   UpdateStatusPayload,
   TranscriptionDegradedEvent,
   CreateCalendarEventArgs,
-  UpdateCalendarEventPatch
+  UpdateCalendarEventPatch,
+  SecretName
 } from '../shared/api-types'
 
 const mintAPI: MintAPI = {
@@ -75,14 +76,13 @@ const mintAPI: MintAPI = {
     ipcRenderer.invoke('meetings:setTags', meetingId, tags),
   generateNotes: (args: {
     meetingId: string
-    openaiApiKey?: string
     openaiModel?: string
     notesProvider?: 'openai' | 'ollama'
     ollamaUrl?: string
     ollamaModel?: string
   }) => ipcRenderer.invoke('meetings:generateNotes', args),
 
-  listOpenAIModels: (apiKey: string) => ipcRenderer.invoke('openai:listModels', apiKey),
+  listOpenAIModels: () => ipcRenderer.invoke('openai:listModels'),
 
   calendar: {
     list: (rangeStartISO: string, rangeEndISO: string) =>
@@ -92,6 +92,12 @@ const mintAPI: MintAPI = {
     update: (id: string, patch: UpdateCalendarEventPatch) =>
       ipcRenderer.invoke('calendar:update', { id, patch }),
     delete: (id: string) => ipcRenderer.invoke('calendar:delete', { id })
+  },
+
+  secrets: {
+    get: (name: SecretName) => ipcRenderer.invoke('secrets:get', name),
+    set: (name: SecretName, value: string) => ipcRenderer.invoke('secrets:set', name, value),
+    has: (name: SecretName) => ipcRenderer.invoke('secrets:has', name)
   },
 
   whisper: {

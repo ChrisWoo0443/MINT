@@ -1,9 +1,6 @@
 import { resolve } from 'path'
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
-import { config } from 'dotenv'
-
-config()
 
 export default defineConfig({
   main: {
@@ -11,10 +8,6 @@ export default defineConfig({
       rollupOptions: {
         external: ['audiotee', 'smart-whisper']
       }
-    },
-    define: {
-      'process.env.DEEPGRAM_API_KEY': JSON.stringify(process.env.DEEPGRAM_API_KEY || ''),
-      'process.env.OPENAI_API_KEY': JSON.stringify(process.env.OPENAI_API_KEY || '')
     }
   },
   preload: {},
