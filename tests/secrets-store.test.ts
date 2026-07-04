@@ -44,4 +44,12 @@ describe('SecretsStore', () => {
     writeFileSync(join(dir, 'secrets.json'), '{not json')
     expect(new SecretsStore(dir, fakeCrypto).get('deepgramApiKey')).toBe(null)
   })
+
+  it('treats a valid-JSON file with null secrets as empty without throwing', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mint-secrets-'))
+    writeFileSync(join(dir, 'secrets.json'), '{"version":1,"secrets":null}')
+    const store = new SecretsStore(dir, fakeCrypto)
+    expect(store.get('deepgramApiKey')).toBe(null)
+    expect(store.has('deepgramApiKey')).toBe(false)
+  })
 })

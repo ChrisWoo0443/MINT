@@ -34,7 +34,7 @@ export class SecretsStore {
     } catch {
       return // missing or corrupt file — start empty, don't clobber until next set()
     }
-    if (parsed?.version !== 1 || typeof parsed.secrets !== 'object') return
+    if (parsed?.version !== 1 || !parsed.secrets || typeof parsed.secrets !== 'object') return
     for (const [name, ciphertextB64] of Object.entries(parsed.secrets)) {
       try {
         this.cache[name as SecretName] = this.crypto.decryptString(
