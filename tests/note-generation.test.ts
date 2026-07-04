@@ -249,4 +249,27 @@ describe('generateNotes custom prompt', () => {
     expect(systemMessage).toContain('Focus on deadlines only.')
     expect(systemMessage).toContain('meeting notes assistant')
   })
+
+  it('uses base prompt when customPrompt is whitespace-only', async () => {
+    const { OpenAIService } = await import('../src/main/services/openai')
+    const service = new OpenAIService({ provider: 'openai', apiKey: 'test-key' })
+
+    const createSpy = vi.spyOn(service['client'].chat.completions, 'create').mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({ summary: 'S', decisions: [], actionItems: [] })
+          }
+        }
+      ]
+    } as never)
+
+    await service.generateNotes('transcript text', undefined, '   ')
+
+    const callArgs = createSpy.mock.calls[0][0] as Record<string, unknown>
+    const messages = callArgs.messages as Array<{ role: string; content: string }>
+    const systemMessage = messages.find((m) => m.role === 'system')?.content
+    expect(systemMessage).not.toContain('Additional instructions from the user')
+    expect(systemMessage).toContain('meeting notes assistant')
+  })
 })
