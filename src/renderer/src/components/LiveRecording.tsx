@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import type { TranscriptionDegradedEvent, TranscriptionDegradedSource } from '../types/global'
 
 interface TranscriptEntry {
@@ -19,9 +19,23 @@ interface LiveRecordingProps {
   onStop: () => void
 }
 
+const TranscriptRow = memo(function TranscriptRow({
+  entry
+}: {
+  entry: TranscriptEntry
+}): React.JSX.Element {
+  return (
+    <div className={`transcript-entry ${entry.isFinal ? '' : 'interim'}`}>
+      {entry.speaker && <span className="speaker-label">{entry.speaker}</span>}
+      <span className="transcript-text">{entry.content}</span>
+    </div>
+  )
+})
+
 export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element {
   const [title, setTitle] = useState(`Meeting — ${new Date().toLocaleString()}`)
-  const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
+  const [finalEntries, setFinalEntries] = useState<TranscriptEntry[]>([])
+  const [interimBySpeaker, setInterimBySpeaker] = useState<Record<string, TranscriptEntry>>({})
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [degradation, setDegradation] = useState<DegradationBySource>({})
   const transcriptEndRef = useRef<HTMLDivElement>(null)
@@ -33,15 +47,18 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
 
   useEffect(() => {
     const cleanup = window.mintAPI.onTranscriptChunk((chunk) => {
-      setTranscript((prev) => {
-        const finalEntries = prev.filter((e) => e.isFinal)
-        if (chunk.isFinal) {
-          return [...finalEntries, { ...chunk }]
-        }
-        // Keep interim entries from other speakers, replace only this speaker's interim
-        const otherInterims = prev.filter((e) => !e.isFinal && e.speaker !== chunk.speaker)
-        return [...finalEntries, ...otherInterims, { ...chunk }]
-      })
+      const speakerKey = chunk.speaker ?? 'unknown'
+      if (chunk.isFinal) {
+        setFinalEntries((prev) => [...prev, { ...chunk }])
+        setInterimBySpeaker((prev) => {
+          if (!(speakerKey in prev)) return prev
+          const next = { ...prev }
+          delete next[speakerKey]
+          return next
+        })
+      } else {
+        setInterimBySpeaker((prev) => ({ ...prev, [speakerKey]: { ...chunk } }))
+      }
     })
     return cleanup
   }, [])
@@ -82,8 +99,8 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [transcript])
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
+  }, [finalEntries.length, interimBySpeaker])
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60)
@@ -147,11 +164,11 @@ export function LiveRecording({ onStop }: LiveRecordingProps): React.JSX.Element
         <div className="transcription-degraded-banners">{degradationBanners}</div>
       )}
       <div className="transcript-feed">
-        {transcript.map((entry, index) => (
-          <div key={index} className={`transcript-entry ${entry.isFinal ? '' : 'interim'}`}>
-            {entry.speaker && <span className="speaker-label">{entry.speaker}</span>}
-            <span className="transcript-text">{entry.content}</span>
-          </div>
+        {finalEntries.map((entry, index) => (
+          <TranscriptRow key={index} entry={entry} />
+        ))}
+        {Object.entries(interimBySpeaker).map(([speakerKey, entry]) => (
+          <TranscriptRow key={`interim-${speakerKey}`} entry={entry} />
         ))}
         <div ref={transcriptEndRef} />
       </div>
