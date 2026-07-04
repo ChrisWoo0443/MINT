@@ -74,11 +74,11 @@ export class AudioTeeService {
 
     instance.on('error', (error) => {
       console.error('[MINT] AudioTee error:', error)
-      this.handleDeath(`error: ${error instanceof Error ? error.message : String(error)}`)
+      this.handleDeath(`error: ${error instanceof Error ? error.message : String(error)}`, instance)
     })
 
     instance.on('stop', () => {
-      this.handleDeath('process exited')
+      this.handleDeath('process exited', instance)
     })
 
     this.audioTee = instance
@@ -86,11 +86,12 @@ export class AudioTeeService {
     await instance.start()
   }
 
-  private handleDeath(reason: string): void {
+  private handleDeath(reason: string, dyingInstance: AudioTeeLike): void {
     if (this.isStopped) return
-    // Re-entry guard: we may receive both 'error' and 'stop' for the same
-    // death. The first call clears `audioTee`; subsequent calls bail.
-    if (this.audioTee === null) return
+    // Ignore events from an instance that is no longer current — the same
+    // death can emit both 'error' and 'stop', and a respawn may already
+    // have replaced it.
+    if (this.audioTee !== dyingInstance) return
     this.audioTee = null
 
     const livedMs = Date.now() - this.lastStartedAt
