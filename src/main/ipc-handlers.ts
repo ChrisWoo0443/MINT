@@ -80,6 +80,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   }
 
   let currentMeetingId: string | null = null
+  let recordingActive = false
+
+  void localStorageService.reconcileInterruptedMeetings().catch((reconcileError) => {
+    console.error('[MINT] Failed to reconcile interrupted meetings:', reconcileError)
+  })
 
   // --- Storage handlers ---
 
@@ -159,6 +164,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('recording:start', async (_event, rawArgs: unknown) => {
     const args = RecordingStartArgsSchema.parse(rawArgs)
+    if (recordingActive) {
+      throw new Error('A recording is already in progress')
+    }
+    recordingActive = true
     try {
       const { title, userName } = args
       currentMeetingId = await localStorageService.createMeeting(title)
@@ -275,18 +284,30 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     } catch (startError) {
       console.error('Failed to start recording:', startError)
       currentMeetingId = null
+      recordingActive = false
       broadcast('recording:status', 'error')
       throw startError
     }
   })
 
   ipcMain.handle('recording:stop', async () => {
+    recordingActive = false
     audioCaptureService.stopCapture(mainWindow)
     audioTeeService.stop()
     micTranscriptionService?.stopStreaming()
     systemTranscriptionService?.stopStreaming()
     micTranscriptionService = null
     systemTranscriptionService = null
+
+    if (sharedWhisperEngine) {
+      try {
+        await sharedWhisperEngine.unload()
+      } catch (unloadError) {
+        console.error('[MINT] Whisper engine unload failed:', unloadError)
+      }
+      sharedWhisperEngine = null
+      sharedWhisperEngineModel = null
+    }
 
     if (!currentMeetingId) {
       broadcast('recording:status', 'stopped')

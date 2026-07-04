@@ -264,6 +264,21 @@ export class LocalStorageService {
     await writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8')
   }
 
+  /**
+   * Startup repair: any meeting still marked "recording" was interrupted by a
+   * crash/quit. Mark it completed so the UI doesn't show a phantom live meeting.
+   */
+  async reconcileInterruptedMeetings(): Promise<number> {
+    const meetings = await this.listMeetings()
+    let repaired = 0
+    for (const meeting of meetings) {
+      if (meeting.status !== 'recording') continue
+      await this.updateMeetingStatus(meeting.id, 'completed', meeting.endedAt ?? new Date().toISOString())
+      repaired++
+    }
+    return repaired
+  }
+
   clearTranscriptBuffer(meetingId: string): void {
     this.transcriptBuffers.delete(meetingId)
   }
