@@ -104,6 +104,7 @@ export function MeetingList({
   useEffect(() => {
     const trimmed = searchQuery.trim()
     if (!trimmed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchResults(null)
       setSearching(false)
       return
@@ -353,7 +354,7 @@ export function MeetingList({
         searching && searchResults.length === 0 ? (
           <p>Searching...</p>
         ) : searchResults.length === 0 ? (
-          <p>No meetings match "{searchQuery.trim()}".</p>
+          <p>No meetings match &ldquo;{searchQuery.trim()}&rdquo;.</p>
         ) : (
           <div className="meeting-section">
             <div className="meeting-section-header">
