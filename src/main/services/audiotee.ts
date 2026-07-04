@@ -3,24 +3,43 @@ import { app } from 'electron'
 import { join } from 'path'
 
 /**
- * If a restart attempt dies again within this window, treat the restart as
- * having failed and stop retrying. Prevents tight restart loops on a
- * deterministically-failing binary.
+ * An instance is considered to have run "healthily" once it survives this
+ * long, which forgives any earlier consecutive failures. AudioTee restarts
+ * after every death as long as the previous instance was healthy; if
+ * MAX_CONSECUTIVE_RESTARTS quick deaths happen in a row, capture gives up
+ * and reports terminal instead of looping forever on a failing binary.
  */
 const RESTART_HEALTHY_THRESHOLD_MS = 5000
+const MAX_CONSECUTIVE_RESTARTS = 3
 
 export type AudioTeeDegradationKind =
   | { kind: 'reconnecting' }
   | { kind: 'recovered' }
   | { kind: 'terminal'; reason: string }
 
+export interface AudioTeeLike {
+  on(event: 'data' | 'error' | 'stop', callback: (arg?: unknown) => void): void
+  start(): Promise<void>
+  stop(): void
+}
+
 export class AudioTeeService {
-  private audioTee: AudioTee | null = null
+  private audioTee: AudioTeeLike | null = null
   private onChunk: ((chunk: Buffer) => void) | null = null
   private isStopped = true
-  private hasRestarted = false
+  private consecutiveRestarts = 0
   private lastStartedAt = 0
   private degradedListeners: Array<(event: AudioTeeDegradationKind) => void> = []
+  private readonly createInstance: () => AudioTeeLike
+
+  constructor(options: { createInstance?: () => AudioTeeLike } = {}) {
+    this.createInstance =
+      options.createInstance ??
+      (() => {
+        const binaryPath = app.isPackaged ? join(process.resourcesPath, 'audiotee') : undefined
+        return new AudioTee({ sampleRate: 16000, binaryPath }) as unknown as AudioTeeLike
+      })
+  }
 
   onDegraded(callback: (event: AudioTeeDegradationKind) => void): () => void {
     this.degradedListeners.push(callback)
@@ -42,20 +61,15 @@ export class AudioTeeService {
   async start(onChunk: (chunk: Buffer) => void): Promise<void> {
     this.onChunk = onChunk
     this.isStopped = false
-    this.hasRestarted = false
+    this.consecutiveRestarts = 0
     await this.spawnInstance()
   }
 
   private async spawnInstance(): Promise<void> {
-    const binaryPath = app.isPackaged ? join(process.resourcesPath, 'audiotee') : undefined
-
-    const instance = new AudioTee({
-      sampleRate: 16000,
-      binaryPath
-    })
+    const instance = this.createInstance()
 
     instance.on('data', (chunk) => {
-      this.onChunk?.(chunk.data)
+      this.onChunk?.((chunk as { data: Buffer }).data)
     })
 
     instance.on('error', (error) => {
@@ -81,22 +95,20 @@ export class AudioTeeService {
 
     const livedMs = Date.now() - this.lastStartedAt
 
-    if (this.hasRestarted) {
-      // Already used our one restart — bail.
+    if (livedMs >= RESTART_HEALTHY_THRESHOLD_MS) {
+      // The instance ran healthily before dying — forgive earlier failures.
+      this.consecutiveRestarts = 0
+    }
+
+    if (this.consecutiveRestarts >= MAX_CONSECUTIVE_RESTARTS) {
       this.emitDegraded({
         kind: 'terminal',
-        reason: `system audio capture died (${reason})`
+        reason: `system audio capture died repeatedly (${reason})`
       })
       return
     }
 
-    if (livedMs < RESTART_HEALTHY_THRESHOLD_MS && this.lastStartedAt !== 0 && livedMs >= 0) {
-      // First instance died very quickly; still try one restart but if that
-      // also fails we'll stop. (hasRestarted gate above handles the second
-      // failure.)
-    }
-
-    this.hasRestarted = true
+    this.consecutiveRestarts++
     this.emitDegraded({ kind: 'reconnecting' })
 
     void this.spawnInstance()
