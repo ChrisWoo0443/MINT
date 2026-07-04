@@ -115,6 +115,40 @@ describe('generateNotes structured outputs (GPT-4o)', () => {
   })
 })
 
+describe('OpenAI client configuration', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('constructs the OpenAI client with a timeout and retries', async () => {
+    const { OpenAIService } = await import('../src/main/services/openai')
+    const service = new OpenAIService({ provider: 'openai', apiKey: 'sk-test' })
+
+    expect(service['client'].timeout).toBe(120_000)
+    expect(service['client'].maxRetries).toBe(2)
+  })
+})
+
+describe('generateNotes empty choices guard', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('returns a graceful fallback when the response has no choices', async () => {
+    const { OpenAIService } = await import('../src/main/services/openai')
+    const service = new OpenAIService({ provider: 'openai', apiKey: 'test-key' })
+
+    vi.spyOn(service['client'].chat.completions, 'create').mockResolvedValue({
+      choices: []
+    } as never)
+
+    const { notes } = await service.generateNotes('Speaker: Hello')
+
+    expect(notes.summary).toBe('')
+    expect(notes.decisions).toEqual([])
+  })
+})
+
 describe('generateNotes meeting context', () => {
   beforeEach(() => {
     vi.resetModules()

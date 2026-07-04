@@ -410,7 +410,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     try {
       const safeUrl = OllamaUrlSchema.parse(url)
       console.log('[MINT] Fetching Ollama models from:', safeUrl)
-      const response = await fetch(`${safeUrl}/api/tags`)
+      const response = await fetch(`${safeUrl}/api/tags`, { signal: AbortSignal.timeout(10_000) })
       if (!response.ok) throw new Error('Failed to fetch')
       const data = await response.json()
       const models = (data.models || []).map((m: { name: string }) => m.name)

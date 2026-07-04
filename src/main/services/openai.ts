@@ -21,6 +21,8 @@ interface NotesServiceOptions {
 
 export const DEFAULT_OPENAI_MODEL = 'gpt-4o'
 
+const CLIENT_TIMEOUT_MS = 120_000
+
 // Models that support OpenAI's strict json_schema structured-output mode.
 const STRUCTURED_OUTPUT_PATTERN = /^(gpt-4o|gpt-4\.1|gpt-5|o[13])/i
 
@@ -76,14 +78,27 @@ export class OpenAIService {
 
   constructor(apiKeyOrOptions: string | NotesServiceOptions) {
     if (typeof apiKeyOrOptions === 'string') {
-      this.client = new OpenAI({ apiKey: apiKeyOrOptions })
+      this.client = new OpenAI({
+        apiKey: apiKeyOrOptions,
+        timeout: CLIENT_TIMEOUT_MS,
+        maxRetries: 2
+      })
       this.model = DEFAULT_OPENAI_MODEL
     } else if (apiKeyOrOptions.provider === 'ollama') {
       const baseURL = `${apiKeyOrOptions.ollamaUrl || 'http://localhost:11434'}/v1`
-      this.client = new OpenAI({ baseURL, apiKey: 'ollama' })
+      this.client = new OpenAI({
+        baseURL,
+        apiKey: 'ollama',
+        timeout: CLIENT_TIMEOUT_MS,
+        maxRetries: 2
+      })
       this.model = apiKeyOrOptions.ollamaModel || 'llama3.2:latest'
     } else {
-      this.client = new OpenAI({ apiKey: apiKeyOrOptions.apiKey })
+      this.client = new OpenAI({
+        apiKey: apiKeyOrOptions.apiKey,
+        timeout: CLIENT_TIMEOUT_MS,
+        maxRetries: 2
+      })
       this.model = apiKeyOrOptions.openaiModel || DEFAULT_OPENAI_MODEL
     }
   }
@@ -108,7 +123,7 @@ export class OpenAIService {
       ...(useStructuredOutput ? { response_format: NOTES_SCHEMA } : { response_format: { type: 'json_object' as const } })
     })
 
-    const responseText = response.choices[0].message.content || '{}'
+    const responseText = response.choices[0]?.message?.content || ''
     const cleaned = responseText.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '')
 
     let parsed: MeetingNotes
@@ -125,7 +140,7 @@ export class OpenAIService {
   }
 
   static async listChatModels(apiKey: string): Promise<string[]> {
-    const client = new OpenAI({ apiKey })
+    const client = new OpenAI({ apiKey, timeout: 15_000, maxRetries: 1 })
     const list = await client.models.list()
     const ids = list.data.map((m) => m.id)
     // Keep chat-completion families, drop audio/embedding/image/moderation models.
