@@ -222,7 +222,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         } satisfies TranscriptionDegradedEvent)
       })
 
-      await micTranscriptionService.startStreaming({ deepgramApiKey }, userName, handleTranscript)
+      await micTranscriptionService.startStreaming(
+        { deepgramApiKey, deepgramModel: args.deepgramModel },
+        userName,
+        handleTranscript
+      )
       console.log(
         `[MINT] Mic transcription started (provider: ${provider}, speaker: "${userName}")`
       )
@@ -236,7 +240,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         })
 
         await systemTranscriptionService.startStreaming(
-          { deepgramApiKey },
+          { deepgramApiKey, deepgramModel: args.deepgramModel, deepgramDiarize: true },
           'Meeting Users',
           handleTranscript
         )

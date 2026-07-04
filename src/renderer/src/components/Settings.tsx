@@ -41,6 +41,9 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   const [whisperModel, setWhisperModel] = useState<WhisperModelName>(
     () => (localStorage.getItem('whisperModel') as WhisperModelName) || 'small.en'
   )
+  const [deepgramModel, setDeepgramModel] = useState<'nova-3' | 'nova-2'>(
+    () => (localStorage.getItem('deepgramModel') as 'nova-3' | 'nova-2') || 'nova-3'
+  )
   const [whisperStatus, setWhisperStatus] = useState<WhisperModelStatus>('not-downloaded')
   const [whisperDownloadPct, setWhisperDownloadPct] = useState<number | null>(null)
   const [notesProvider, setNotesProvider] = useState<'openai' | 'ollama'>(
@@ -332,6 +335,24 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
               }}
               placeholder="Enter Deepgram API key"
             />
+
+            <label htmlFor="deepgram-model">Model</label>
+            <select
+              id="deepgram-model"
+              value={deepgramModel}
+              onChange={(e) => {
+                const value = e.target.value as 'nova-3' | 'nova-2'
+                setDeepgramModel(value)
+                localStorage.setItem('deepgramModel', value)
+              }}
+            >
+              <option value="nova-3">nova-3 (recommended)</option>
+              <option value="nova-2">nova-2 (legacy)</option>
+            </select>
+            <p className="settings-hint">
+              Remote participants are separated automatically (Speaker 1, Speaker 2, …). Your own
+              microphone is always labeled with your display name.
+            </p>
           </>
         )}
       </section>

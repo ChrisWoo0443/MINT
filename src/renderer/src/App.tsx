@@ -98,7 +98,9 @@ function MainApp(): React.JSX.Element {
         userName,
         micDeviceId: localStorage.getItem('micDeviceId') || undefined,
         transcriptionProvider,
-        whisperModel
+        whisperModel,
+        deepgramModel:
+          (localStorage.getItem('deepgramModel') as 'nova-3' | 'nova-2' | null) ?? undefined
       })
       // Calendar view is currently hidden; this link path is kept for when it returns.
       if (eventIdToLink && meetingId) {

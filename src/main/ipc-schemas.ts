@@ -55,7 +55,8 @@ export const RecordingStartArgsSchema = z.object({
   userName: z.string().min(1).max(MAX_NAME_LEN),
   micDeviceId: z.string().max(MAX_ID_LEN).optional(),
   transcriptionProvider: z.enum(['local', 'deepgram']).optional(),
-  whisperModel: WhisperModelSchema.optional()
+  whisperModel: WhisperModelSchema.optional(),
+  deepgramModel: z.enum(['nova-3', 'nova-2']).optional()
 })
 
 export const GenerateNotesArgsSchema = z.object({

@@ -162,6 +162,16 @@ describe('RecordingStartArgsSchema', () => {
     })
     expect(parsed).not.toHaveProperty('ollamaUrl')
   })
+
+  it('accepts only known deepgram models', () => {
+    const base = { title: 'T', userName: 'U' }
+    expect(RecordingStartArgsSchema.parse({ ...base, deepgramModel: 'nova-3' }).deepgramModel).toBe(
+      'nova-3'
+    )
+    expect(() =>
+      RecordingStartArgsSchema.parse({ ...base, deepgramModel: 'whisper-9000' })
+    ).toThrow()
+  })
 })
 
 describe('GenerateNotesArgsSchema', () => {
