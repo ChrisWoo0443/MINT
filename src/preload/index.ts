@@ -118,6 +118,16 @@ const mintAPI: MintAPI = {
     }
   },
 
+  mlx: {
+    getStatus: () => ipcRenderer.invoke('mlx:getStatus'),
+    installRuntime: () => ipcRenderer.invoke('mlx:installRuntime'),
+    onInstallProgress: (callback: (line: string) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, line: string): void => callback(line)
+      ipcRenderer.on('mlx:install:progress', listener)
+      return () => ipcRenderer.removeListener('mlx:install:progress', listener)
+    }
+  },
+
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
   getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
   updates: {

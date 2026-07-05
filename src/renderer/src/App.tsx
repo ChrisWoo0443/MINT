@@ -85,8 +85,13 @@ function MainApp(): React.JSX.Element {
     try {
       const userName = localStorage.getItem('displayName') || 'You'
       const transcriptionProvider =
-        (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram' | 'apple' | null) ??
-        'local'
+        (localStorage.getItem('transcriptionProvider') as
+          | 'local'
+          | 'deepgram'
+          | 'apple'
+          | 'lightning-mlx'
+          | 'parakeet-mlx'
+          | null) ?? 'local'
       const whisperModel =
         (localStorage.getItem('whisperModel') as
           | 'tiny.en'
@@ -101,7 +106,8 @@ function MainApp(): React.JSX.Element {
         transcriptionProvider,
         whisperModel,
         deepgramModel:
-          (localStorage.getItem('deepgramModel') as 'nova-3' | 'nova-2' | null) ?? undefined
+          (localStorage.getItem('deepgramModel') as 'nova-3' | 'nova-2' | null) ?? undefined,
+        mlxModel: localStorage.getItem('mlxModel') || undefined
       })
       // Calendar view is currently hidden; this link path is kept for when it returns.
       if (eventIdToLink && meetingId) {

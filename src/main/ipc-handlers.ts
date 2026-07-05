@@ -9,6 +9,7 @@ import { CalendarStorageService } from './services/calendar-storage'
 import { WhisperModelManager, type ModelName } from './services/whisper-model-manager'
 import { LocalWhisperService } from './services/local-whisper'
 import { WhisperEngine } from './services/whisper-engine'
+import { MlxSidecarManager } from './services/mlx-sidecar'
 import { AppleSpeechService, isAppleSpeechAvailable } from './services/apple-speech'
 import type { TranscriptionService } from './services/transcription'
 import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
@@ -55,6 +56,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   const localStorageService = new LocalStorageService()
   const calendarStorageService = new CalendarStorageService(localStorageService.getStoragePath())
   const whisperModelManager = new WhisperModelManager(join(app.getPath('userData'), 'models'))
+  const mlxSidecarManager = new MlxSidecarManager({
+    venvDir: join(app.getPath('userData'), 'mlx-env'),
+    sidecarScript: app.isPackaged
+      ? join(process.resourcesPath, 'mlx-sidecar.py')
+      : join(app.getAppPath(), 'native', 'mlx-sidecar', 'sidecar.py')
+  })
   const secretsStore = new SecretsStore(app.getPath('userData'), safeStorage)
 
   const updateCheckerService = new UpdateCheckerService({
@@ -235,6 +242,16 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         }
         micTranscriptionService = new AppleSpeechService()
         systemTranscriptionService = new AppleSpeechService()
+      } else if (provider === 'lightning-mlx' || provider === 'parakeet-mlx') {
+        const engineKind = provider === 'lightning-mlx' ? 'lightning' : 'parakeet'
+        const defaultModel =
+          engineKind === 'lightning' ? 'distil-medium.en' : 'mlx-community/parakeet-tdt-0.6b-v2'
+        const engine = await mlxSidecarManager.ensureEngine(
+          engineKind,
+          args.mlxModel ?? defaultModel
+        )
+        micTranscriptionService = new LocalWhisperService(engine)
+        systemTranscriptionService = new LocalWhisperService(engine)
       } else {
         micTranscriptionService = new DeepgramService()
         systemTranscriptionService = new DeepgramService()
@@ -342,6 +359,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
       sharedWhisperEngine = null
       sharedWhisperEngineModel = null
     }
+
+    mlxSidecarManager.shutdown()
 
     if (!currentMeetingId) {
       broadcast('recording:status', 'stopped')
@@ -476,6 +495,14 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   ipcMain.handle('whisper:deleteModel', async (_event, name: unknown) =>
     whisperModelManager.deleteModel(WhisperModelSchema.parse(name))
   )
+
+  // --- MLX runtime handlers ---
+
+  ipcMain.handle('mlx:getStatus', () => mlxSidecarManager.getStatus())
+
+  ipcMain.handle('mlx:installRuntime', async () => {
+    await mlxSidecarManager.installRuntime((line) => broadcast('mlx:install:progress', line))
+  })
 
   // --- Update checker handlers ---
 

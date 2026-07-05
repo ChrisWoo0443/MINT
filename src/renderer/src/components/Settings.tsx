@@ -13,7 +13,7 @@ interface SettingsProps {
 
 type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
 type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
-type TranscriptionProviderId = 'local' | 'deepgram' | 'apple'
+type TranscriptionProviderId = 'local' | 'deepgram' | 'apple' | 'lightning-mlx' | 'parakeet-mlx'
 
 type UpdateInfoPayload = {
   version: string
@@ -48,6 +48,11 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   )
   const [whisperStatus, setWhisperStatus] = useState<WhisperModelStatus>('not-downloaded')
   const [whisperDownloadPct, setWhisperDownloadPct] = useState<number | null>(null)
+  const [mlxStatus, setMlxStatus] = useState<'not-installed' | 'installing' | 'ready'>(
+    'not-installed'
+  )
+  const [mlxInstallLine, setMlxInstallLine] = useState<string>('')
+  const [mlxModel, setMlxModel] = useState(() => localStorage.getItem('mlxModel') || '')
   const [notesProvider, setNotesProvider] = useState<'openai' | 'ollama'>(
     () => (localStorage.getItem('notesProvider') as 'openai' | 'ollama') || 'openai'
   )
@@ -167,6 +172,12 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   }, [whisperModel])
 
   useEffect(() => {
+    window.mintAPI.mlx.getStatus().then(setMlxStatus)
+    const unsubscribe = window.mintAPI.mlx.onInstallProgress(setMlxInstallLine)
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
     window.mintAPI.getAppVersion().then(setAppVersion)
   }, [])
 
@@ -216,6 +227,18 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
       setWhisperStatus('not-downloaded')
     } finally {
       setWhisperDownloadPct(null)
+    }
+  }
+
+  const handleInstallMlxRuntime = async (): Promise<void> => {
+    setMlxStatus('installing')
+    try {
+      await window.mintAPI.mlx.installRuntime()
+      setMlxStatus('ready')
+    } catch (installError) {
+      console.error('[MINT] MLX runtime install failed:', installError)
+      setMlxStatus('not-installed')
+      setMlxInstallLine(installError instanceof Error ? installError.message : 'Install failed')
     }
   }
 
@@ -291,6 +314,10 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
             const value = e.target.value as TranscriptionProviderId
             setTranscriptionProvider(value)
             localStorage.setItem('transcriptionProvider', value)
+            if (value === 'lightning-mlx' || value === 'parakeet-mlx') {
+              localStorage.removeItem('mlxModel')
+              setMlxModel('')
+            }
           }}
         >
           <option value="local">Local Whisper (Private)</option>
@@ -298,6 +325,8 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
             <option value="apple">Apple Intelligence (Private, macOS 26+)</option>
           )}
           <option value="deepgram">Deepgram (Cloud)</option>
+          <option value="lightning-mlx">Lightning Whisper MLX (Private, fast)</option>
+          <option value="parakeet-mlx">Parakeet MLX (Private, fastest English)</option>
         </select>
 
         {transcriptionProvider === 'local' && (
@@ -364,6 +393,68 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
               Remote participants are separated automatically (Speaker 1, Speaker 2, …). Your own
               microphone is always labeled with your display name.
             </p>
+          </>
+        )}
+
+        {(transcriptionProvider === 'lightning-mlx' ||
+          transcriptionProvider === 'parakeet-mlx') && (
+          <>
+            {mlxStatus !== 'ready' ? (
+              <div className="whisper-status">
+                {mlxStatus === 'installing' ? (
+                  <span>Installing runtime… {mlxInstallLine}</span>
+                ) : (
+                  <>
+                    <button type="button" onClick={handleInstallMlxRuntime}>
+                      Install MLX runtime
+                    </button>
+                    <p className="settings-hint">
+                      Requires <code>uv</code> (<code>brew install uv</code>). Downloads Python
+                      packages (~1 GB) into MINT&apos;s data folder.
+                    </p>
+                    {mlxInstallLine && <p className="settings-hint">{mlxInstallLine}</p>}
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                <label htmlFor="mlx-model">Model</label>
+                <select
+                  id="mlx-model"
+                  value={
+                    mlxModel ||
+                    (transcriptionProvider === 'lightning-mlx'
+                      ? 'distil-medium.en'
+                      : 'mlx-community/parakeet-tdt-0.6b-v2')
+                  }
+                  onChange={(e) => {
+                    setMlxModel(e.target.value)
+                    localStorage.setItem('mlxModel', e.target.value)
+                  }}
+                >
+                  {transcriptionProvider === 'lightning-mlx' ? (
+                    <>
+                      <option value="distil-medium.en">distil-medium.en (recommended)</option>
+                      <option value="distil-large-v3">distil-large-v3 (best quality)</option>
+                      <option value="base">base (fastest)</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="mlx-community/parakeet-tdt-0.6b-v2">
+                        parakeet-tdt-0.6b-v2 (recommended)
+                      </option>
+                      <option value="mlx-community/parakeet-tdt-0.6b-v3">
+                        parakeet-tdt-0.6b-v3 (multilingual)
+                      </option>
+                    </>
+                  )}
+                </select>
+                <p className="settings-hint">
+                  The model downloads from Hugging Face on first use — the first recording may take
+                  a few minutes to start.
+                </p>
+              </>
+            )}
           </>
         )}
       </section>

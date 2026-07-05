@@ -18,6 +18,8 @@ extraResources:
     to: audiotee
   - from: resources/speech-transcriber
     to: speech-transcriber
+  - from: native/mlx-sidecar/sidecar.py
+    to: mlx-sidecar.py
 mac:
   target:
     - dmg

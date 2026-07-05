@@ -181,6 +181,20 @@ describe('RecordingStartArgsSchema', () => {
     })
     expect(parsed.transcriptionProvider).toBe('apple')
   })
+
+  it('accepts mlx providers with a model id', () => {
+    const parsed = RecordingStartArgsSchema.parse({
+      title: 'T',
+      userName: 'U',
+      transcriptionProvider: 'lightning-mlx',
+      mlxModel: 'distil-medium.en'
+    })
+    expect(parsed.transcriptionProvider).toBe('lightning-mlx')
+    expect(parsed.mlxModel).toBe('distil-medium.en')
+    expect(() =>
+      RecordingStartArgsSchema.parse({ title: 'T', userName: 'U', mlxModel: 'x'.repeat(200) })
+    ).toThrow()
+  })
 })
 
 describe('GenerateNotesArgsSchema', () => {

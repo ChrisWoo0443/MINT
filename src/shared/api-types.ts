@@ -13,7 +13,12 @@ export interface TranscriptChunk {
   isFinal: boolean
 }
 
-export type TranscriptionProviderId = 'local' | 'deepgram' | 'apple'
+export type TranscriptionProviderId =
+  | 'local'
+  | 'deepgram'
+  | 'apple'
+  | 'lightning-mlx'
+  | 'parakeet-mlx'
 
 export interface StartRecordingArgs {
   title: string
@@ -22,6 +27,7 @@ export interface StartRecordingArgs {
   transcriptionProvider?: TranscriptionProviderId
   whisperModel?: 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
   deepgramModel?: 'nova-3' | 'nova-2'
+  mlxModel?: string
 }
 
 export interface SystemCapabilities {
@@ -94,6 +100,7 @@ export interface UpdateCalendarEventPatch {
 
 export type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
 export type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
+export type MlxRuntimeStatus = 'not-installed' | 'installing' | 'ready'
 
 export interface WhisperModelInfo {
   name: WhisperModelName
@@ -177,6 +184,11 @@ export interface MintAPI {
     onDownloadProgress: (
       callback: (progress: WhisperDownloadProgress) => void
     ) => () => void
+  }
+  mlx: {
+    getStatus: () => Promise<MlxRuntimeStatus>
+    installRuntime: () => Promise<void>
+    onInstallProgress: (callback: (line: string) => void) => () => void
   }
   getAppVersion: () => Promise<string>
   getCapabilities: () => Promise<SystemCapabilities>

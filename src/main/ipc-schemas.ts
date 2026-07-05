@@ -54,9 +54,12 @@ export const RecordingStartArgsSchema = z.object({
   title: MeetingTitleSchema,
   userName: z.string().min(1).max(MAX_NAME_LEN),
   micDeviceId: z.string().max(MAX_ID_LEN).optional(),
-  transcriptionProvider: z.enum(['local', 'deepgram', 'apple']).optional(),
+  transcriptionProvider: z
+    .enum(['local', 'deepgram', 'apple', 'lightning-mlx', 'parakeet-mlx'])
+    .optional(),
   whisperModel: WhisperModelSchema.optional(),
-  deepgramModel: z.enum(['nova-3', 'nova-2']).optional()
+  deepgramModel: z.enum(['nova-3', 'nova-2']).optional(),
+  mlxModel: z.string().min(1).max(128).optional()
 })
 
 export const GenerateNotesArgsSchema = z.object({
