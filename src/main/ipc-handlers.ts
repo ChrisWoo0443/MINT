@@ -13,6 +13,7 @@ import type { TranscriptionService } from './services/transcription'
 import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
 import type { TranscriptionDegradedEvent } from '../shared/api-types'
 import { SecretsStore } from './services/secrets-store'
+import { WavWriter } from './services/wav-writer'
 import { z } from 'zod'
 import {
   MeetingIdSchema,
@@ -81,6 +82,21 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   let currentMeetingId: string | null = null
   let recordingActive = false
+  let micWavWriter: WavWriter | null = null
+  let systemWavWriter: WavWriter | null = null
+
+  async function closeWavWriters(): Promise<void> {
+    const writers = [micWavWriter, systemWavWriter]
+    micWavWriter = null
+    systemWavWriter = null
+    for (const writer of writers) {
+      try {
+        await writer?.close()
+      } catch (closeError) {
+        console.error('[MINT] Failed to close wav writer:', closeError)
+      }
+    }
+  }
 
   void localStorageService.reconcileInterruptedMeetings().catch((reconcileError) => {
     console.error('[MINT] Failed to reconcile interrupted meetings:', reconcileError)
@@ -171,6 +187,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     try {
       const { title, userName } = args
       currentMeetingId = await localStorageService.createMeeting(title)
+
+      const meetingDir = join(localStorageService.getStoragePath(), currentMeetingId)
+      micWavWriter = await WavWriter.create(join(meetingDir, 'audio-mic.wav'))
+      systemWavWriter = await WavWriter.create(join(meetingDir, 'audio-system.wav'))
 
       const handleTranscript = async (result: {
         speaker: string | null
@@ -275,6 +295,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         })
 
         await audioTeeService.start((chunk) => {
+          systemWavWriter?.append(chunk)
           systemTranscriptionService?.sendAudio(chunk)
         })
       } catch (systemError) {
@@ -289,6 +310,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
       console.error('Failed to start recording:', startError)
       currentMeetingId = null
       recordingActive = false
+      await closeWavWriters()
       broadcast('recording:status', 'error')
       throw startError
     }
@@ -302,6 +324,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     systemTranscriptionService?.stopStreaming()
     micTranscriptionService = null
     systemTranscriptionService = null
+    await closeWavWriters()
 
     if (sharedWhisperEngine) {
       try {
@@ -393,6 +416,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   // --- Audio handlers ---
 
   ipcMain.on('audio:chunk:mic', (_event, chunk: Buffer) => {
+    micWavWriter?.append(chunk)
     micTranscriptionService?.sendAudio(chunk)
   })
 
