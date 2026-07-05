@@ -119,6 +119,7 @@ const mintAPI: MintAPI = {
   },
 
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
+  getCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
   updates: {
     getStatus: () => ipcRenderer.invoke('updates:getStatus'),
     checkNow: () => ipcRenderer.invoke('updates:checkNow'),

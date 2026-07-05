@@ -172,6 +172,15 @@ describe('RecordingStartArgsSchema', () => {
       RecordingStartArgsSchema.parse({ ...base, deepgramModel: 'whisper-9000' })
     ).toThrow()
   })
+
+  it('accepts the apple transcription provider', () => {
+    const parsed = RecordingStartArgsSchema.parse({
+      title: 'T',
+      userName: 'U',
+      transcriptionProvider: 'apple'
+    })
+    expect(parsed.transcriptionProvider).toBe('apple')
+  })
 })
 
 describe('GenerateNotesArgsSchema', () => {

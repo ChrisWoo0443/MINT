@@ -85,7 +85,8 @@ function MainApp(): React.JSX.Element {
     try {
       const userName = localStorage.getItem('displayName') || 'You'
       const transcriptionProvider =
-        (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram' | null) ?? 'local'
+        (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram' | 'apple' | null) ??
+        'local'
       const whisperModel =
         (localStorage.getItem('whisperModel') as
           | 'tiny.en'

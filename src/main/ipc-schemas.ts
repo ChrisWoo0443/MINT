@@ -54,7 +54,7 @@ export const RecordingStartArgsSchema = z.object({
   title: MeetingTitleSchema,
   userName: z.string().min(1).max(MAX_NAME_LEN),
   micDeviceId: z.string().max(MAX_ID_LEN).optional(),
-  transcriptionProvider: z.enum(['local', 'deepgram']).optional(),
+  transcriptionProvider: z.enum(['local', 'deepgram', 'apple']).optional(),
   whisperModel: WhisperModelSchema.optional(),
   deepgramModel: z.enum(['nova-3', 'nova-2']).optional()
 })

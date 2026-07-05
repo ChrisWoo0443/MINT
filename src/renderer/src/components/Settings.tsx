@@ -13,6 +13,7 @@ interface SettingsProps {
 
 type WhisperModelName = 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
 type WhisperModelStatus = 'not-downloaded' | 'downloading' | 'ready'
+type TranscriptionProviderId = 'local' | 'deepgram' | 'apple'
 
 type UpdateInfoPayload = {
   version: string
@@ -35,9 +36,10 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('displayName') || '')
   const [storagePath, setStoragePath] = useState('')
   const [deepgramKey, setDeepgramKey] = useState('')
-  const [transcriptionProvider, setTranscriptionProvider] = useState<'local' | 'deepgram'>(
-    () => (localStorage.getItem('transcriptionProvider') as 'local' | 'deepgram') || 'local'
+  const [transcriptionProvider, setTranscriptionProvider] = useState<TranscriptionProviderId>(
+    () => (localStorage.getItem('transcriptionProvider') as TranscriptionProviderId) || 'local'
   )
+  const [appleSpeechAvailable, setAppleSpeechAvailable] = useState(false)
   const [whisperModel, setWhisperModel] = useState<WhisperModelName>(
     () => (localStorage.getItem('whisperModel') as WhisperModelName) || 'small.en'
   )
@@ -90,6 +92,12 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   useEffect(() => {
     window.mintAPI.secrets.get('deepgramApiKey').then((v) => setDeepgramKey(v ?? ''))
     window.mintAPI.secrets.get('openaiApiKey').then((v) => setOpenaiKey(v ?? ''))
+  }, [])
+
+  useEffect(() => {
+    window.mintAPI
+      .getCapabilities()
+      .then((caps) => setAppleSpeechAvailable(caps.appleSpeechAvailable))
   }, [])
 
   const loadOllamaModels = useCallback(
@@ -280,12 +288,15 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
           id="transcription-provider"
           value={transcriptionProvider}
           onChange={(e) => {
-            const value = e.target.value as 'local' | 'deepgram'
+            const value = e.target.value as TranscriptionProviderId
             setTranscriptionProvider(value)
             localStorage.setItem('transcriptionProvider', value)
           }}
         >
-          <option value="local">Local (Private)</option>
+          <option value="local">Local Whisper (Private)</option>
+          {appleSpeechAvailable && (
+            <option value="apple">Apple Intelligence (Private, macOS 26+)</option>
+          )}
           <option value="deepgram">Deepgram (Cloud)</option>
         </select>
 

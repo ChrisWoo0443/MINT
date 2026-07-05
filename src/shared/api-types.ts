@@ -13,13 +13,19 @@ export interface TranscriptChunk {
   isFinal: boolean
 }
 
+export type TranscriptionProviderId = 'local' | 'deepgram' | 'apple'
+
 export interface StartRecordingArgs {
   title: string
   userName: string
   micDeviceId?: string
-  transcriptionProvider?: 'local' | 'deepgram'
+  transcriptionProvider?: TranscriptionProviderId
   whisperModel?: 'tiny.en' | 'base.en' | 'small.en' | 'medium.en'
   deepgramModel?: 'nova-3' | 'nova-2'
+}
+
+export interface SystemCapabilities {
+  appleSpeechAvailable: boolean
 }
 
 export type SecretName = 'deepgramApiKey' | 'openaiApiKey'
@@ -173,6 +179,7 @@ export interface MintAPI {
     ) => () => void
   }
   getAppVersion: () => Promise<string>
+  getCapabilities: () => Promise<SystemCapabilities>
   updates: {
     getStatus: () => Promise<UpdateStatusPayload>
     checkNow: () => Promise<void>

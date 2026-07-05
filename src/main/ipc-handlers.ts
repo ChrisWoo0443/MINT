@@ -9,6 +9,7 @@ import { CalendarStorageService } from './services/calendar-storage'
 import { WhisperModelManager, type ModelName } from './services/whisper-model-manager'
 import { LocalWhisperService } from './services/local-whisper'
 import { WhisperEngine } from './services/whisper-engine'
+import { AppleSpeechService, isAppleSpeechAvailable } from './services/apple-speech'
 import type { TranscriptionService } from './services/transcription'
 import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
 import type { TranscriptionDegradedEvent } from '../shared/api-types'
@@ -228,6 +229,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
         const engine = await ensureWhisperEngine(modelName)
         micTranscriptionService = new LocalWhisperService(engine)
         systemTranscriptionService = new LocalWhisperService(engine)
+      } else if (provider === 'apple') {
+        if (!isAppleSpeechAvailable()) {
+          throw new Error('Apple transcription requires macOS 26 or newer.')
+        }
+        micTranscriptionService = new AppleSpeechService()
+        systemTranscriptionService = new AppleSpeechService()
       } else {
         micTranscriptionService = new DeepgramService()
         systemTranscriptionService = new DeepgramService()
@@ -489,6 +496,12 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   ipcMain.handle('shell:openExternal', async (_event, url: unknown) => {
     await shell.openExternal(ExternalUrlSchema.parse(url))
   })
+
+  // --- System capability handlers ---
+
+  ipcMain.handle('system:getCapabilities', () => ({
+    appleSpeechAvailable: isAppleSpeechAvailable()
+  }))
 
   // --- Calendar handlers ---
 
