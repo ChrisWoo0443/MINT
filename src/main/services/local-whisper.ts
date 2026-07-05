@@ -1,9 +1,9 @@
 import type {
+  TranscriptionEngine,
   TranscriptionService,
   TranscriptionStartConfig,
   TranscriptResult
 } from './transcription'
-import type { WhisperEngine } from './whisper-engine'
 import { reconcile, detectSilence, type ReconcileState } from './rolling-window'
 
 const SAMPLE_RATE = 16000
@@ -14,7 +14,7 @@ const SILENCE_THRESHOLD_RMS = 0.005
 const SILENCE_MIN_DURATION_MS = 600
 
 export class LocalWhisperService implements TranscriptionService {
-  private readonly engine: WhisperEngine
+  private readonly engine: TranscriptionEngine
   private speakerLabel = ''
   private onResult: ((result: TranscriptResult) => void) | null = null
   private audioBuffer: Int16Array = new Int16Array(0)
@@ -29,7 +29,7 @@ export class LocalWhisperService implements TranscriptionService {
     stabilityCounts: new Map()
   }
 
-  constructor(engine: WhisperEngine) {
+  constructor(engine: TranscriptionEngine) {
     this.engine = engine
   }
 

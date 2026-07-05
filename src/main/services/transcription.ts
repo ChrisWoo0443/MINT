@@ -6,6 +6,20 @@ export interface TranscriptResult {
   isFinal: boolean
 }
 
+export interface EngineWord {
+  text: string
+  endMs: number
+}
+
+/**
+ * A local speech-to-text engine that transcribes one audio window at a time.
+ * WhisperEngine (smart-whisper) and MlxEngine (python sidecar) both satisfy it;
+ * LocalWhisperService drives either through its rolling-window scheduler.
+ */
+export interface TranscriptionEngine {
+  submit(job: { pcmFloat32: Float32Array; sampleRate: number }): Promise<{ words: EngineWord[] }>
+}
+
 export interface TranscriptionStartConfig {
   deepgramApiKey?: string
   deepgramModel?: string
