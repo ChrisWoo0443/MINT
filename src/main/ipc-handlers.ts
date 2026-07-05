@@ -1,5 +1,5 @@
 import { app, ipcMain, BrowserWindow, dialog, shell, webContents, safeStorage } from 'electron'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { AudioCaptureService } from './services/audio-capture'
 import { AudioTeeService } from './services/audiotee'
@@ -119,6 +119,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   async function runSpeakerDetection(meetingId: string): Promise<void> {
     const wavPath = join(localStorageService.getStoragePath(), meetingId, 'audio-system.wav')
     if (!existsSync(wavPath)) return
+    // A bare WAV header is 44 bytes with no audio samples — skip so meetings with no
+    // system audio don't trigger a ~30MB diarization model download.
+    if (statSync(wavPath).size <= 44) return
 
     broadcast('diarization:status', { meetingId, state: 'running' })
     try {
