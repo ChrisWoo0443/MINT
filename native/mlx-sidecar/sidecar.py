@@ -58,6 +58,8 @@ def main():
             request = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if not isinstance(request, dict):
+            continue
         request_id = request.get("id")
         try:
             cmd = request.get("cmd")
