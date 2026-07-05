@@ -114,18 +114,21 @@ export class AppleSpeechService implements TranscriptionService {
       console.error('[MINT] speech-transcriber stderr:', data.toString())
     })
 
-    child.on('exit', (code) => {
-      if (this.stopped) return
-      this.child = null
-      if (code !== 0) {
-        this.emitDegraded({ kind: 'terminal', reason: `speech helper exited with code ${code}` })
-      }
-    })
+    let readySettled = false
+    let rejectReady!: (error: Error) => void
 
     const readyPromise = new Promise<void>((resolve, reject) => {
+      rejectReady = (error) => {
+        if (readySettled) return
+        readySettled = true
+        clearTimeout(readyTimeout)
+        reject(error)
+      }
       const readyTimeout = setTimeout(
         () =>
-          reject(new Error('speech helper did not become ready (model download may be needed)')),
+          rejectReady(
+            new Error('speech helper did not become ready (model download may be needed)')
+          ),
         120_000
       )
       const rl = createInterface({ input: child.stdout })
@@ -134,6 +137,7 @@ export class AppleSpeechService implements TranscriptionService {
         if (!message) return
         switch (message.type) {
           case 'ready':
+            readySettled = true
             clearTimeout(readyTimeout)
             resolve()
             break
@@ -141,8 +145,7 @@ export class AppleSpeechService implements TranscriptionService {
             console.log('[MINT] SpeechAnalyzer model downloading…')
             break
           case 'error':
-            clearTimeout(readyTimeout)
-            reject(new Error(message.message))
+            rejectReady(new Error(message.message))
             this.emitDegraded({ kind: 'terminal', reason: message.message })
             break
           case 'result':
@@ -157,9 +160,20 @@ export class AppleSpeechService implements TranscriptionService {
         }
       })
       child.on('error', (spawnError) => {
-        clearTimeout(readyTimeout)
-        reject(spawnError)
+        rejectReady(spawnError)
       })
+    })
+
+    child.on('exit', (code) => {
+      if (this.stopped) return
+      this.child = null
+      if (!readySettled) {
+        rejectReady(new Error(`speech helper exited with code ${code} before becoming ready`))
+        return
+      }
+      if (code !== 0) {
+        this.emitDegraded({ kind: 'terminal', reason: `speech helper exited with code ${code}` })
+      }
     })
 
     await readyPromise
