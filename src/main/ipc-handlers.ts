@@ -411,8 +411,11 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
     recordingActive = false
     audioCaptureService.stopCapture(mainWindow)
     audioTeeService.stop()
-    micTranscriptionService?.stopStreaming()
-    systemTranscriptionService?.stopStreaming()
+    // Await the stop so providers that flush trailing finals (Apple Speech) persist
+    // them via handleTranscript before currentMeetingId is cleared below. Providers
+    // that return void resolve immediately.
+    await Promise.resolve(micTranscriptionService?.stopStreaming())
+    await Promise.resolve(systemTranscriptionService?.stopStreaming())
     micTranscriptionService = null
     systemTranscriptionService = null
     await closeWavWriters()

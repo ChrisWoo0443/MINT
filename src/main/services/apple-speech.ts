@@ -195,16 +195,31 @@ export class AppleSpeechService implements TranscriptionService {
     this.child.stdin.write(pcm16)
   }
 
-  stopStreaming(): void {
-    this.stopped = true
+  stopStreaming(): Promise<void> {
+    this.stopped = true // gate sendAudio; keep onResult wired for the final flush
     const child = this.child
     this.child = null
-    this.onResult = null
-    this.degradedListeners = []
-    if (child) {
-      child.stdin.end() // helper finalizes and exits on EOF
-      const killTimer = setTimeout(() => child.kill(), 5000)
-      child.on('exit', () => clearTimeout(killTimer))
+    if (!child) {
+      this.onResult = null
+      this.degradedListeners = []
+      return Promise.resolve()
     }
+    // The helper flushes final results after stdin EOF, then exits. Resolve once the
+    // child exits (or the 5s kill fallback fires) so those finals are delivered before
+    // onResult is torn down.
+    return new Promise<void>((resolve) => {
+      const finish = (): void => {
+        clearTimeout(killTimer)
+        this.onResult = null
+        this.degradedListeners = []
+        resolve()
+      }
+      const killTimer = setTimeout(() => {
+        child.kill()
+        finish()
+      }, 5000)
+      child.once('exit', finish)
+      child.stdin.end() // helper finalizes and exits on EOF
+    })
   }
 }

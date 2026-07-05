@@ -41,7 +41,12 @@ export interface TranscriptionService {
     onResult: (result: TranscriptResult) => void
   ): Promise<void>
   sendAudio(pcm16: Buffer): void
-  stopStreaming(): void
+  /**
+   * Stop the stream. Implementations may return a promise that resolves once the
+   * final flush completes; callers that need the trailing finals must await it.
+   * Synchronous implementations return void.
+   */
+  stopStreaming(): void | Promise<void>
   /**
    * Optional. Subscribe to degradation events (reconnect attempts, dropped
    * audio, terminal failure). Returns an unsubscribe function. Implementations
