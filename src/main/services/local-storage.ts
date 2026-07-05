@@ -356,7 +356,7 @@ export class LocalStorageService {
 
   private parseTranscriptMarkdown(markdownContent: string): TranscriptEntry[] {
     const entries: TranscriptEntry[] = []
-    const transcriptLinePattern = /^\[(\d{2}):(\d{2})\]\s\*\*(.+?)\*\*:\s(.+)$/
+    const transcriptLinePattern = /^\[(\d{2,}):(\d{2})\]\s\*\*(.+?)\*\*:\s(.+)$/
 
     for (const line of markdownContent.split('\n')) {
       const match = line.match(transcriptLinePattern)

@@ -30,4 +30,23 @@ describe('rewriteTranscriptSpeakers', () => {
     expect(result[1].speaker).toBe('Speaker 1')
     expect(result[1].content).toBe('hi there')
   })
+
+  it('preserves entries at and beyond 100 minutes through a round trip', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mint-rewrite-long-'))
+    const storage = new LocalStorageService(dir)
+    const meetingId = await storage.createMeeting('Long Sync')
+    await storage.insertTranscriptChunk(meetingId, 'Chris', 'early', 61, 62)
+    await storage.insertTranscriptChunk(meetingId, 'Meeting Users', 'late', 6000.5, 6001)
+
+    const entries = await storage.getTranscripts(meetingId)
+    await storage.rewriteTranscriptSpeakers(meetingId, entries)
+
+    const result = await storage.getTranscripts(meetingId)
+    expect(result).toHaveLength(2)
+    expect(result[0].speaker).toBe('Chris')
+    expect(result[0].content).toBe('early')
+    expect(result[1].speaker).toBe('Meeting Users')
+    expect(result[1].content).toBe('late')
+    expect(result[1].timestampStart).toBe(6000)
+  })
 })
