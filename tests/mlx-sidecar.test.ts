@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { MlxRequestRouter } from '../src/main/services/mlx-sidecar'
+import { EventEmitter } from 'node:events'
+import { PassThrough } from 'node:stream'
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { MlxRequestRouter, MlxSidecarManager } from '../src/main/services/mlx-sidecar'
 
 describe('MlxRequestRouter', () => {
   it('resolves a pending request when its id arrives', async () => {
@@ -23,5 +28,36 @@ describe('MlxRequestRouter', () => {
     const pending = router.register(3)
     router.rejectAll(new Error('sidecar exited'))
     await expect(pending).rejects.toThrow('sidecar exited')
+  })
+})
+
+describe('MlxSidecarManager', () => {
+  it('rejects instead of crashing when the spawned process errors', async () => {
+    const venvDir = mkdtempSync(join(tmpdir(), 'mlx-sidecar-test-'))
+    mkdirSync(join(venvDir, 'bin'), { recursive: true })
+    writeFileSync(join(venvDir, 'bin', 'python'), '')
+    writeFileSync(join(venvDir, '.mint-mlx-ok'), '')
+
+    const fakeChild = new EventEmitter() as EventEmitter & {
+      stdin: PassThrough
+      stdout: PassThrough
+      stderr: PassThrough
+    }
+    fakeChild.stdin = new PassThrough()
+    fakeChild.stdout = new PassThrough()
+    fakeChild.stderr = new PassThrough()
+
+    const spawnFn = (() => {
+      setImmediate(() => fakeChild.emit('error', new Error('spawn ENOENT')))
+      return fakeChild
+    }) as unknown as typeof import('node:child_process').spawn
+
+    const manager = new MlxSidecarManager({
+      venvDir,
+      sidecarScript: 'sidecar.py',
+      spawnFn
+    })
+
+    await expect(manager.ensureEngine('lightning', 'test-model')).rejects.toThrow('spawn ENOENT')
   })
 })

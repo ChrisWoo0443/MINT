@@ -175,13 +175,31 @@ export class MlxSidecarManager {
       this.loadedKey = null
       this.router.rejectAll(new Error(`mlx sidecar exited with code ${code}`))
     })
+    child.on('error', (spawnError) => {
+      console.error('[MINT] mlx sidecar process error:', spawnError)
+      this.child = null
+      this.loadedKey = null
+      this.router.rejectAll(
+        spawnError instanceof Error ? spawnError : new Error(String(spawnError))
+      )
+    })
+    child.stdin.on('error', (stdinError) => {
+      // EPIPE after child death — exit handler does the cleanup; just don't crash.
+      console.error('[MINT] mlx sidecar stdin error:', stdinError)
+    })
   }
 
   private async request(payload: Record<string, unknown>): Promise<SidecarResponse> {
     await this.ensureSidecar()
     const id = this.nextRequestId++
     const pending = this.router.register(id)
-    this.child!.stdin.write(JSON.stringify({ id, ...payload }) + '\n')
+    try {
+      this.child!.stdin.write(JSON.stringify({ id, ...payload }) + '\n')
+    } catch (writeError) {
+      this.router.rejectAll(
+        writeError instanceof Error ? writeError : new Error(String(writeError))
+      )
+    }
     return pending
   }
 
