@@ -89,6 +89,7 @@ export function MeetingDetail({
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [activeHighlight, setActiveHighlight] = useState<string | null>(highlightQuery)
+  const [detectingSpeakers, setDetectingSpeakers] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -115,6 +116,15 @@ export function MeetingDetail({
   useEffect(() => {
     loadMeetingData()
   }, [loadMeetingData])
+
+  useEffect(() => {
+    const unsubscribe = window.mintAPI.onDiarizationStatus((event) => {
+      if (event.meetingId !== meetingId) return
+      setDetectingSpeakers(event.state === 'running')
+      if (event.state === 'done') void loadMeetingData()
+    })
+    return unsubscribe
+  }, [meetingId, loadMeetingData])
 
   useEffect(() => {
     if (isEditingTitle) titleInputRef.current?.select()
@@ -271,6 +281,9 @@ export function MeetingDetail({
       </div>
       <p className="meeting-date">{new Date(meeting.startedAt).toLocaleString()}</p>
       <span className={`status-badge status-${meeting.status}`}>{meeting.status}</span>
+      {detectingSpeakers && (
+        <span className="status-badge status-processing">detecting speakers…</span>
+      )}
 
       <div className="tabs">
         <button

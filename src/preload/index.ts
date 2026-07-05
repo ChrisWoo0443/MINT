@@ -9,6 +9,7 @@ import type {
   WhisperDownloadProgress,
   UpdateStatusPayload,
   TranscriptionDegradedEvent,
+  DiarizationStatusEvent,
   CreateCalendarEventArgs,
   UpdateCalendarEventPatch,
   SecretName
@@ -48,6 +49,16 @@ const mintAPI: MintAPI = {
     ipcRenderer.on('transcription:degraded', listener)
     return () => {
       ipcRenderer.removeListener('transcription:degraded', listener)
+    }
+  },
+
+  onDiarizationStatus: (callback: (event: DiarizationStatusEvent) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: DiarizationStatusEvent): void => {
+      callback(payload)
+    }
+    ipcRenderer.on('diarization:status', listener)
+    return () => {
+      ipcRenderer.removeListener('diarization:status', listener)
     }
   },
 

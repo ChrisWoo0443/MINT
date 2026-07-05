@@ -1,4 +1,5 @@
 import { app, ipcMain, BrowserWindow, dialog, shell, webContents, safeStorage } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { AudioCaptureService } from './services/audio-capture'
 import { AudioTeeService } from './services/audiotee'
@@ -11,6 +12,7 @@ import { LocalWhisperService } from './services/local-whisper'
 import { WhisperEngine } from './services/whisper-engine'
 import { MlxSidecarManager } from './services/mlx-sidecar'
 import { AppleSpeechService, isAppleSpeechAvailable } from './services/apple-speech'
+import { DiarizationService, relabelEntries } from './services/diarization'
 import type { TranscriptionService } from './services/transcription'
 import { UpdateCheckerService, type UpdateStatus } from './services/update-checker'
 import type { TranscriptionDegradedEvent } from '../shared/api-types'
@@ -63,6 +65,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
       : join(app.getAppPath(), 'native', 'mlx-sidecar', 'sidecar.py')
   })
   const secretsStore = new SecretsStore(app.getPath('userData'), safeStorage)
+  const diarizationService = new DiarizationService(
+    join(app.getPath('userData'), 'models', 'diarization')
+  )
 
   const updateCheckerService = new UpdateCheckerService({
     currentVersion: app.getVersion(),
@@ -90,6 +95,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   let currentMeetingId: string | null = null
   let recordingActive = false
+  let currentProvider: string = 'local'
   let micWavWriter: WavWriter | null = null
   let systemWavWriter: WavWriter | null = null
 
@@ -109,6 +115,30 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   void localStorageService.reconcileInterruptedMeetings().catch((reconcileError) => {
     console.error('[MINT] Failed to reconcile interrupted meetings:', reconcileError)
   })
+
+  async function runSpeakerDetection(meetingId: string): Promise<void> {
+    const wavPath = join(localStorageService.getStoragePath(), meetingId, 'audio-system.wav')
+    if (!existsSync(wavPath)) return
+
+    broadcast('diarization:status', { meetingId, state: 'running' })
+    try {
+      if (diarizationService.getStatus() === 'not-downloaded') {
+        await diarizationService.downloadModels()
+      }
+      const turns = await diarizationService.diarizeWav(wavPath)
+      if (turns.length === 0) {
+        broadcast('diarization:status', { meetingId, state: 'done' })
+        return
+      }
+      const entries = await localStorageService.getTranscripts(meetingId)
+      const relabeled = relabelEntries(entries, turns, 'Meeting Users')
+      await localStorageService.rewriteTranscriptSpeakers(meetingId, relabeled)
+      broadcast('diarization:status', { meetingId, state: 'done' })
+    } catch (diarizationError) {
+      console.error('[MINT] Speaker detection failed:', diarizationError)
+      broadcast('diarization:status', { meetingId, state: 'error' })
+    }
+  }
 
   // --- Storage handlers ---
 
@@ -224,6 +254,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
       }
 
       const provider = args.transcriptionProvider ?? 'local'
+      currentProvider = provider
 
       if (provider === 'local') {
         const modelName: ModelName = args.whisperModel ?? 'small.en'
@@ -372,6 +403,10 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
     localStorageService.clearTranscriptBuffer(meetingId)
     await localStorageService.updateMeetingStatus(meetingId, 'completed', new Date().toISOString())
+
+    if (currentProvider !== 'deepgram') {
+      void runSpeakerDetection(meetingId)
+    }
 
     broadcast('recording:status', 'stopped')
   })

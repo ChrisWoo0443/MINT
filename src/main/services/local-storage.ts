@@ -251,6 +251,20 @@ export class LocalStorageService {
     return this.parseTranscriptMarkdown(transcriptContent)
   }
 
+  async rewriteTranscriptSpeakers(meetingId: string, entries: TranscriptEntry[]): Promise<void> {
+    const metadata = await this.getMeeting(meetingId)
+    const lines = entries.map((entry) => {
+      const formattedTimestamp = this.formatTimestamp(entry.timestampStart)
+      return `[${formattedTimestamp}] **${entry.speaker ?? 'Unknown'}**: ${entry.content}\n`
+    })
+    const transcriptPath = join(this.storagePath, meetingId, 'transcript.md')
+    await writeFile(
+      transcriptPath,
+      `# Transcript — ${metadata.title}\n\n${lines.join('')}`,
+      'utf-8'
+    )
+  }
+
   async deleteMeeting(meetingId: string): Promise<void> {
     const meetingPath = join(this.storagePath, meetingId)
     await rm(meetingPath, { recursive: true, force: true })

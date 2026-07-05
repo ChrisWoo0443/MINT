@@ -146,12 +146,18 @@ export type TranscriptionDegradedEvent =
     }
   | { kind: 'terminal'; source: TranscriptionDegradedSource; reason: string }
 
+export interface DiarizationStatusEvent {
+  meetingId: string
+  state: 'running' | 'done' | 'error'
+}
+
 export interface MintAPI {
   startRecording: (args: StartRecordingArgs) => Promise<string>
   stopRecording: () => Promise<void>
   onTranscriptChunk: (callback: (chunk: TranscriptChunk) => void) => () => void
   onRecordingStatus: (callback: (status: string) => void) => () => void
   onTranscriptionDegraded: (callback: (event: TranscriptionDegradedEvent) => void) => () => void
+  onDiarizationStatus: (callback: (event: DiarizationStatusEvent) => void) => () => void
   openExternal: (url: string) => Promise<void>
   listOllamaModels: (url: string) => Promise<string[] | null>
   listOpenAIModels: () => Promise<string[] | null>
