@@ -43,9 +43,11 @@ struct SpeechTranscriberCLI {
       fail("no compatible audio format for SpeechTranscriber")
     }
 
-    let inputFormat = AVAudioFormat(
+    guard let inputFormat = AVAudioFormat(
       commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: true
-    )!
+    ) else {
+      fail("cannot create input audio format")
+    }
     guard let converter = AVAudioConverter(from: inputFormat, to: analyzerFormat) else {
       fail("cannot build audio converter")
     }
@@ -70,6 +72,7 @@ struct SpeechTranscriberCLI {
         }
       } catch {
         emit(["type": "error", "message": "results stream failed: \(error.localizedDescription)"])
+        exit(1)
       }
     }
 
@@ -83,15 +86,31 @@ struct SpeechTranscriberCLI {
 
     let stdin = FileHandle.standardInput
     let bytesPerChunk = 3200 // 100 ms of 16 kHz s16le mono
+    var pendingByte = Data()
     while true {
-      let data = stdin.readData(ofLength: bytesPerChunk)
-      if data.isEmpty { break } // EOF
-      let frameCount = AVAudioFrameCount(data.count / 2)
+      let readData = stdin.readData(ofLength: bytesPerChunk)
+      if readData.isEmpty && pendingByte.isEmpty { break } // EOF, nothing left to flush
+      let reachedEOF = readData.isEmpty
+
+      var chunk = pendingByte + readData
+      if chunk.count % 2 != 0 {
+        pendingByte = Data(chunk.suffix(1))
+        chunk = Data(chunk.dropLast(1))
+      } else {
+        pendingByte = Data()
+      }
+
+      if chunk.isEmpty {
+        if reachedEOF { break }
+        continue
+      }
+
+      let frameCount = AVAudioFrameCount(chunk.count / 2)
       guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: frameCount) else { continue }
       inputBuffer.frameLength = frameCount
-      data.withUnsafeBytes { rawBuffer in
+      chunk.withUnsafeBytes { rawBuffer in
         if let src = rawBuffer.baseAddress, let dst = inputBuffer.int16ChannelData?[0] {
-          memcpy(dst, src, data.count)
+          memcpy(dst, src, chunk.count)
         }
       }
 
