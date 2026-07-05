@@ -18,7 +18,8 @@
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
-    "build:mac": "electron-vite build && electron-builder --mac"
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:speech": "mkdir -p resources && swiftc -O -parse-as-library -target arm64-apple-macos26 native/speech-transcriber/main.swift -o resources/speech-transcriber"
   },
   "dependencies": {
     "@deepgram/sdk": "^4.11.3",
