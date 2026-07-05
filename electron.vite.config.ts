@@ -6,7 +6,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['audiotee', 'smart-whisper']
+        external: ['audiotee', 'smart-whisper', 'sherpa-onnx-node']
       }
     }
   },
