@@ -363,9 +363,45 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
       return currentMeetingId
     } catch (startError) {
       console.error('Failed to start recording:', startError)
+      const failedMeetingId = currentMeetingId
       currentMeetingId = null
       recordingActive = false
+
+      // Each teardown step is isolated so a teardown failure never masks startError.
+      try {
+        micTranscriptionService?.stopStreaming()
+      } catch (teardownError) {
+        console.error('[MINT] mic teardown after failed start:', teardownError)
+      }
+      micTranscriptionService = null
+
+      try {
+        systemTranscriptionService?.stopStreaming()
+      } catch (teardownError) {
+        console.error('[MINT] system teardown after failed start:', teardownError)
+      }
+      systemTranscriptionService = null
+
+      try {
+        audioTeeService.stop()
+      } catch (teardownError) {
+        console.error('[MINT] audiotee teardown after failed start:', teardownError)
+      }
+
       await closeWavWriters()
+
+      if (failedMeetingId) {
+        try {
+          await localStorageService.updateMeetingStatus(
+            failedMeetingId,
+            'completed',
+            new Date().toISOString()
+          )
+        } catch (teardownError) {
+          console.error('[MINT] failed-meeting status update after failed start:', teardownError)
+        }
+      }
+
       broadcast('recording:status', 'error')
       throw startError
     }

@@ -122,6 +122,17 @@ export class AppleSpeechService implements TranscriptionService {
         if (readySettled) return
         readySettled = true
         clearTimeout(readyTimeout)
+        // Terminate the helper on any pre-ready failure so it does not linger.
+        // Immediate kill is fine — nothing worth flushing exists before ready.
+        if (this.child) {
+          try {
+            this.child.stdin.end()
+          } catch {
+            // helper may already be gone
+          }
+          this.child.kill()
+          this.child = null
+        }
         reject(error)
       }
       const readyTimeout = setTimeout(
