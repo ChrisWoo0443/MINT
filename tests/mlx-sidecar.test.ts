@@ -60,4 +60,54 @@ describe('MlxSidecarManager', () => {
 
     await expect(manager.ensureEngine('lightning', 'test-model')).rejects.toThrow('spawn ENOENT')
   })
+
+  it('reloads the model after the sidecar respawns mid-recording', async () => {
+    const venvDir = mkdtempSync(join(tmpdir(), 'mlx-sidecar-respawn-'))
+    mkdirSync(join(venvDir, 'bin'), { recursive: true })
+    writeFileSync(join(venvDir, 'bin', 'python'), '')
+    writeFileSync(join(venvDir, '.mint-mlx-ok'), '')
+
+    type FakeChild = EventEmitter & {
+      stdin: { write: (line: string) => boolean; end: () => void; on: () => void }
+      stdout: PassThrough
+      stderr: PassThrough
+    }
+    const sentCommands: Array<Record<string, unknown>> = []
+    let liveChild: FakeChild
+    const spawnChild = (): FakeChild => {
+      const child = new EventEmitter() as FakeChild
+      child.stdout = new PassThrough()
+      child.stderr = new PassThrough()
+      child.stdin = {
+        write: (line: string) => {
+          const message = JSON.parse(line) as Record<string, unknown>
+          sentCommands.push(message)
+          process.nextTick(() =>
+            child.stdout.write(JSON.stringify({ id: message.id, ok: true, words: [] }) + '\n')
+          )
+          return true
+        },
+        end: () => {},
+        on: () => {}
+      }
+      return child
+    }
+    const spawnFn = (() => {
+      liveChild = spawnChild()
+      return liveChild
+    }) as unknown as typeof import('node:child_process').spawn
+
+    const manager = new MlxSidecarManager({ venvDir, sidecarScript: 'sidecar.py', spawnFn })
+    const engine = await manager.ensureEngine('lightning', 'model-a')
+    const job = { pcmFloat32: new Float32Array(8), sampleRate: 16000 }
+    await engine.submit(job)
+
+    // Sidecar crashes; the exit handler nulls loadedKey.
+    liveChild!.emit('exit', 1)
+
+    await engine.submit(job)
+
+    const loadCommands = sentCommands.filter((command) => command.cmd === 'load')
+    expect(loadCommands).toHaveLength(2)
+  })
 })

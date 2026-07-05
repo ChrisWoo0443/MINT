@@ -91,6 +91,8 @@ export class MlxSidecarManager {
   private router = new MlxRequestRouter()
   private nextRequestId = 1
   private loadedKey: string | null = null
+  private loadingPromise: Promise<void> | null = null
+  private loadingKey: string | null = null
   private status: MlxRuntimeStatus
   private readonly venvDir: string
   private readonly sidecarScript: string
@@ -203,15 +205,33 @@ export class MlxSidecarManager {
     return pending
   }
 
+  private async ensureLoaded(kind: MlxEngineKind, model: string, key: string): Promise<void> {
+    if (this.loadedKey === key) return
+    // Dedup concurrent submits: parallel callers await the same in-flight load
+    // instead of each re-sending a 'load' command.
+    if (!this.loadingPromise || this.loadingKey !== key) {
+      // First load downloads the model from Hugging Face — can take minutes.
+      this.loadingKey = key
+      this.loadingPromise = this.request({ cmd: 'load', engine: kind, model })
+        .then(() => {
+          this.loadedKey = key
+        })
+        .finally(() => {
+          this.loadingPromise = null
+          this.loadingKey = null
+        })
+    }
+    await this.loadingPromise
+  }
+
   async ensureEngine(kind: MlxEngineKind, model: string): Promise<TranscriptionEngine> {
     const key = `${kind}:${model}`
-    if (this.loadedKey !== key) {
-      // First load downloads the model from Hugging Face — can take minutes.
-      await this.request({ cmd: 'load', engine: kind, model })
-      this.loadedKey = key
-    }
+    await this.ensureLoaded(kind, model, key)
     return {
       submit: async (job) => {
+        // A mid-recording sidecar crash nulls loadedKey; the respawned sidecar has
+        // no model, so reload before every transcribe.
+        await this.ensureLoaded(kind, model, key)
         const wavPath = join(tmpdir(), `mint-mlx-${randomUUID()}.wav`)
         await mkdir(tmpdir(), { recursive: true })
         await writeFile(wavPath, pcmFloat32ToWav(job.pcmFloat32, job.sampleRate))
