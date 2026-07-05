@@ -88,7 +88,6 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
   }, [selectedDevice])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDevices()
     window.mintAPI.getStoragePath().then(setStoragePath)
     window.mintAPI.getTags().then(setTags)
@@ -126,7 +125,6 @@ export function Settings({ onRerunOnboarding, onResetApp }: SettingsProps): Reac
 
   useEffect(() => {
     if (notesProvider === 'ollama') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadOllamaModels(ollamaUrl)
     }
   }, [notesProvider, ollamaUrl, loadOllamaModels])
