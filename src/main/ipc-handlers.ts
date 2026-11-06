@@ -5,7 +5,6 @@ import { AudioTeeService } from './services/audiotee'
 import { DeepgramService } from './services/deepgram'
 import { OpenAIService } from './services/openai'
 import { LocalStorageService } from './services/local-storage'
-import { CalendarStorageService } from './services/calendar-storage'
 import { WhisperModelManager, type ModelName } from './services/whisper-model-manager'
 import { LocalWhisperService } from './services/local-whisper'
 import { WhisperEngine } from './services/whisper-engine'
@@ -26,12 +25,7 @@ import {
   OpenAIApiKeyArgSchema,
   TagsArraySchema,
   SetMeetingTagsArgsSchema,
-  SearchQuerySchema,
-  CalendarListArgsSchema,
-  CalendarGetArgsSchema,
-  CalendarCreateArgsSchema,
-  CalendarUpdateArgsSchema,
-  CalendarDeleteArgsSchema
+  SearchQuerySchema
 } from './ipc-schemas'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): {
@@ -50,7 +44,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
   let sharedWhisperEngine: WhisperEngine | null = null
   let sharedWhisperEngineModel: ModelName | null = null
   const localStorageService = new LocalStorageService()
-  const calendarStorageService = new CalendarStorageService(localStorageService.getStoragePath())
   const whisperModelManager = new WhisperModelManager(join(app.getPath('userData'), 'models'))
 
   const updateCheckerService = new UpdateCheckerService({
@@ -83,11 +76,9 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('storage:getPath', () => localStorageService.getStoragePath())
 
-  ipcMain.handle('storage:setPath', (_event, newPath: unknown) => {
-    const path = StoragePathSchema.parse(newPath)
-    localStorageService.setStoragePath(path)
-    calendarStorageService.setStoragePath(path)
-  })
+  ipcMain.handle('storage:setPath', (_event, newPath: unknown) =>
+    localStorageService.setStoragePath(StoragePathSchema.parse(newPath))
+  )
 
   ipcMain.handle('storage:pickFolder', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -254,7 +245,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
       broadcast('recording:status', 'recording')
       const micDeviceId = args.micDeviceId || 'default'
       audioCaptureService.startCapture(mainWindow, { micDeviceId })
-      return currentMeetingId
     } catch (startError) {
       console.error('Failed to start recording:', startError)
       currentMeetingId = null
@@ -437,33 +427,6 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): {
 
   ipcMain.handle('shell:openApp', async (_event, appPath: unknown) => {
     await shell.openPath(ShellPathSchema.parse(appPath))
-  })
-
-  // --- Calendar handlers ---
-
-  ipcMain.handle('calendar:list', async (_event, args: unknown) => {
-    const parsed = CalendarListArgsSchema.parse(args)
-    return calendarStorageService.listEvents(parsed.rangeStartISO, parsed.rangeEndISO)
-  })
-
-  ipcMain.handle('calendar:get', async (_event, args: unknown) => {
-    const parsed = CalendarGetArgsSchema.parse(args)
-    return calendarStorageService.getEvent(parsed.id)
-  })
-
-  ipcMain.handle('calendar:create', async (_event, args: unknown) => {
-    const parsed = CalendarCreateArgsSchema.parse(args)
-    return calendarStorageService.createEvent(parsed)
-  })
-
-  ipcMain.handle('calendar:update', async (_event, args: unknown) => {
-    const parsed = CalendarUpdateArgsSchema.parse(args)
-    return calendarStorageService.updateEvent(parsed.id, parsed.patch)
-  })
-
-  ipcMain.handle('calendar:delete', async (_event, args: unknown) => {
-    const parsed = CalendarDeleteArgsSchema.parse(args)
-    await calendarStorageService.deleteEvent(parsed.id)
   })
 
   return { updateCheckerService }

@@ -8,9 +8,7 @@ import type {
   WhisperModelName,
   WhisperDownloadProgress,
   UpdateStatusPayload,
-  TranscriptionDegradedEvent,
-  CreateCalendarEventArgs,
-  UpdateCalendarEventPatch
+  TranscriptionDegradedEvent
 } from '../shared/api-types'
 
 const mintAPI: MintAPI = {
@@ -83,16 +81,6 @@ const mintAPI: MintAPI = {
   }) => ipcRenderer.invoke('meetings:generateNotes', args),
 
   listOpenAIModels: (apiKey: string) => ipcRenderer.invoke('openai:listModels', apiKey),
-
-  calendar: {
-    list: (rangeStartISO: string, rangeEndISO: string) =>
-      ipcRenderer.invoke('calendar:list', { rangeStartISO, rangeEndISO }),
-    get: (id: string) => ipcRenderer.invoke('calendar:get', { id }),
-    create: (args: CreateCalendarEventArgs) => ipcRenderer.invoke('calendar:create', args),
-    update: (id: string, patch: UpdateCalendarEventPatch) =>
-      ipcRenderer.invoke('calendar:update', { id, patch }),
-    delete: (id: string) => ipcRenderer.invoke('calendar:delete', { id })
-  },
 
   whisper: {
     listModels: () => ipcRenderer.invoke('whisper:listModels'),
